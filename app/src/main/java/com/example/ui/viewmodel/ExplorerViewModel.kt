@@ -62,7 +62,8 @@ data class ExplorerUiState(
     // User Message/Snackbar
     val userNotice: String? = null,
     val rootStatus: String = "Checking...",
-    val storageDrives: List<FileRepository.StorageDrive> = emptyList()
+    val storageDrives: List<FileRepository.StorageDrive> = emptyList(),
+    val isStoragePermissionGranted: Boolean = true
 )
 
 class ExplorerViewModel(application: Application) : AndroidViewModel(application) {
@@ -73,6 +74,7 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     val uiState: StateFlow<ExplorerUiState> = _uiState.asStateFlow()
 
     init {
+        checkStoragePermission()
         val initialPath = repository.rootStoragePath
         val defaultTab = TabItem(
             id = UUID.randomUUID().toString(),
@@ -94,6 +96,20 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
         loadCurrentDirectory()
         loadStorageStats()
         checkRootStatus()
+    }
+
+    fun checkStoragePermission() {
+        val granted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            android.os.Environment.isExternalStorageManager()
+        } else {
+            // For older versions, we might need a different check, but MANAGE_EXTERNAL_STORAGE is API 30+
+            true 
+        }
+        _uiState.update { it.copy(isStoragePermissionGranted = granted) }
+        if (granted) {
+            loadCurrentDirectory()
+            loadStorageStats()
+        }
     }
 
     fun loadStorageDrives() {

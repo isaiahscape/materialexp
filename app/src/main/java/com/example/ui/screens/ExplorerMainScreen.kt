@@ -126,6 +126,7 @@ import com.example.ui.components.FileDetailsDialog
 import com.example.ui.components.FileGridItem
 import com.example.ui.components.FileListItem
 import com.example.ui.components.ImageViewerDialog
+import com.example.ui.components.PermissionDialog
 import com.example.ui.components.SearchAndFilterHeader
 import com.example.ui.components.TabBar
 import com.example.ui.components.TextEditorSheet
@@ -1127,6 +1128,10 @@ fun ExplorerMainScreen(
             onDismiss = { openWithFile = null },
             viewModel = viewModel
         )
+    }
+
+    if (!state.isStoragePermissionGranted) {
+        PermissionDialog(onDismiss = { /* Action handled inside */ })
     }
 }
 
