@@ -320,7 +320,13 @@ fun ExplorerMainScreen(
                     title = {
                         Text(
                             text = when (state.currentScreen) {
-                                NavigationScreen.EXPLORER -> "Material Explorer"
+                                NavigationScreen.EXPLORER -> {
+                                    if (state.categoryFilter != FileCategory.ALL && state.categoryFilter != FileCategory.FOLDER) {
+                                        "Searching: ${state.categoryFilter.name.lowercase().replaceFirstChar { it.uppercase() }}"
+                                    } else {
+                                        "Material Explorer"
+                                    }
+                                }
                                 NavigationScreen.STORAGE_ANALYZER -> "Storage Analyzer"
                                 NavigationScreen.BOOKMARKS -> "Bookmarks"
                                 NavigationScreen.TRASH_BIN -> "Recycle Bin"

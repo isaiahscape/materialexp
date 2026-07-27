@@ -476,14 +476,15 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     fun extractZipArchive(fileItem: FileItem) {
         val activeTab = _uiState.value.tabs.getOrNull(_uiState.value.activeTabIndex) ?: return
-        val targetDir = File(activeTab.currentPath, fileItem.name.substringBeforeLast(".zip")).absolutePath
+        val folderName = fileItem.name.substringBeforeLast('.')
+        val targetDir = File(activeTab.currentPath, folderName).absolutePath
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val ok = repository.extractZip(fileItem.path, targetDir)
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    userNotice = if (ok) "Extracted archive to ${File(targetDir).name}" else "Extraction failed"
+                    userNotice = if (ok) "Extracted archive to $folderName" else "Extraction failed"
                 )
             }
             loadCurrentDirectory()
@@ -605,7 +606,7 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setCategoryFilter(category: FileCategory) {
-        _uiState.update { it.copy(categoryFilter = category) }
+        _uiState.update { it.copy(categoryFilter = category, selectedFilePaths = emptySet()) }
         loadCurrentDirectory()
     }
 

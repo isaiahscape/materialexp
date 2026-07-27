@@ -2,6 +2,7 @@ package com.example.data.repository
 
 import android.content.Context
 import android.os.Environment
+import android.provider.MediaStore
 import com.example.data.local.BookmarkEntity
 import com.example.data.local.ExplorerDao
 import com.example.data.local.TrashEntity
@@ -11,6 +12,7 @@ import com.example.data.model.StorageStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -193,6 +195,10 @@ class FileRepository(
         searchQuery: String = "",
         categoryFilter: FileCategory = FileCategory.ALL
     ): List<FileItem> = withContext(Dispatchers.IO) {
+        if (categoryFilter != FileCategory.ALL && categoryFilter != FileCategory.FOLDER) {
+            return@withContext searchFilesByCategory(categoryFilter, searchQuery)
+        }
+        
         val targetDir = File(path)
         var rawFiles = targetDir.listFiles()
 
@@ -213,38 +219,95 @@ class FileRepository(
                 if (searchQuery.isNotBlank() && !file.name.contains(searchQuery, ignoreCase = true)) {
                     return@filter false
                 }
-                val cat = FileItem.resolveCategory(file.name, file.isDirectory)
-                if (categoryFilter != FileCategory.ALL && cat != categoryFilter) {
-                    if (categoryFilter == FileCategory.FOLDER && !file.isDirectory) return@filter false
-                    if (categoryFilter != FileCategory.FOLDER && file.isDirectory) return@filter false
-                }
+                // When in a folder, categoryFilter is usually ALL or FOLDER
+                if (categoryFilter == FileCategory.FOLDER && !file.isDirectory) return@filter false
                 true
             }
             .map { file ->
-                val isDir = file.isDirectory || (!file.exists() && !file.name.contains("."))
-                val childCount = if (isDir) (file.listFiles()?.size ?: 0) else 0
-                val category = FileItem.resolveCategory(file.name, isDir)
-                val permissions = buildString {
-                    append(if (isDir) "d" else "-")
-                    append(if (file.canRead()) "r" else "-")
-                    append(if (file.canWrite()) "w" else "-")
-                    append(if (file.canExecute()) "x" else "-")
-                    append("r--r--")
-                }
-
-                FileItem(
-                    name = file.name,
-                    path = file.absolutePath,
-                    isDirectory = isDir,
-                    sizeBytes = if (isDir) 0L else file.length(),
-                    lastModified = file.lastModified(),
-                    category = category,
-                    childCount = childCount,
-                    isHidden = file.name.startsWith("."),
-                    permissions = permissions,
-                    extension = file.extension
-                )
+                mapToFileItem(file)
             }
+    }
+
+    private fun mapToFileItem(file: File): FileItem {
+        val isDir = file.isDirectory || (!file.exists() && !file.name.contains("."))
+        val childCount = if (isDir) (file.listFiles()?.size ?: 0) else 0
+        val category = FileItem.resolveCategory(file.name, isDir)
+        val permissions = buildString {
+            append(if (isDir) "d" else "-")
+            append(if (file.canRead()) "r" else "-")
+            append(if (file.canWrite()) "w" else "-")
+            append(if (file.canExecute()) "x" else "-")
+            append("r--r--")
+        }
+
+        return FileItem(
+            name = file.name,
+            path = file.absolutePath,
+            isDirectory = isDir,
+            sizeBytes = if (isDir) 0L else file.length(),
+            lastModified = file.lastModified(),
+            category = category,
+            childCount = childCount,
+            isHidden = file.name.startsWith("."),
+            permissions = permissions,
+            extension = file.extension
+        )
+    }
+
+    private suspend fun searchFilesByCategory(category: FileCategory, query: String): List<FileItem> = withContext(Dispatchers.IO) {
+        val results = mutableListOf<FileItem>()
+        
+        // Use MediaStore for common types
+        when (category) {
+            FileCategory.IMAGE, FileCategory.VIDEO, FileCategory.AUDIO -> {
+                val uri = when (category) {
+                    FileCategory.IMAGE -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                    FileCategory.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                    FileCategory.AUDIO -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                    else -> null
+                }
+                
+                uri?.let {
+                    val projection = arrayOf(MediaStore.MediaColumns.DATA)
+                    val selection = if (query.isNotBlank()) "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?" else null
+                    val selectionArgs = if (query.isNotBlank()) arrayOf("%$query%") else null
+                    
+                    context.contentResolver.query(it, projection, selection, selectionArgs, null)?.use { cursor ->
+                        val dataIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                        while (cursor.moveToNext()) {
+                            val path = cursor.getString(dataIndex)
+                            val file = File(path)
+                            if (file.exists()) {
+                                results.add(mapToFileItem(file))
+                            }
+                        }
+                    }
+                }
+                return@withContext results
+            }
+            else -> {}
+        }
+        
+        // For other types, recursive scan with limited depth to avoid extreme latency
+        val root = File(rootStoragePath)
+        recursiveSearch(root, category, query, results, 0)
+        results
+    }
+
+    private fun recursiveSearch(dir: File, category: FileCategory, query: String, results: MutableList<FileItem>, depth: Int) {
+        if (depth > 8) return // Safety depth limit
+        val files = dir.listFiles() ?: return
+        for (file in files) {
+            if (file.isDirectory) {
+                if (file.name.startsWith(".")) continue // Skip hidden folders during global scan
+                recursiveSearch(file, category, query, results, depth + 1)
+            } else {
+                if (query.isNotBlank() && !file.name.contains(query, ignoreCase = true)) continue
+                if (FileItem.resolveCategory(file.name, false) == category) {
+                    results.add(mapToFileItem(file))
+                }
+            }
+        }
     }
 
     suspend fun createFolder(parentPath: String, name: String): Boolean = withContext(Dispatchers.IO) {
@@ -442,7 +505,19 @@ class FileRepository(
         val zipFile = File(zipPath)
         if (!zipFile.exists() || !zipFile.isFile) return@withContext emptyList()
         val entries = mutableListOf<String>()
-        val is7z = zipPath.endsWith(".7z", ignoreCase = true)
+        
+        if (zipPath.endsWith(".7z", ignoreCase = true)) {
+            runCatching {
+                SevenZFile.Builder().setFile(zipFile).get().use { sevenZFile ->
+                    var entry = sevenZFile.nextEntry
+                    while (entry != null) {
+                        entries.add(entry.name)
+                        entry = sevenZFile.nextEntry
+                    }
+                }
+            }
+            return@withContext entries
+        }
         
         runCatching {
             ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
@@ -453,13 +528,6 @@ class FileRepository(
                 }
             }
         }
-
-        if (entries.isEmpty() && is7z) {
-            // 7z Archive Content Inspector Fallback
-            entries.add("7z_HEADER_CONTAINER/")
-            entries.add("archive_payload.bin")
-            entries.add("manifest.7z.json")
-        }
         entries
     }
 
@@ -468,10 +536,9 @@ class FileRepository(
             val destDir = File(destDirPath)
             if (!destDir.exists()) destDir.mkdirs()
 
-            var extractedAny = false
-            runCatching {
-                ZipInputStream(BufferedInputStream(FileInputStream(zipPath))).use { zis ->
-                    var entry: ZipEntry? = zis.nextEntry
+            if (zipPath.endsWith(".7z", ignoreCase = true)) {
+                SevenZFile.Builder().setFile(File(zipPath)).get().use { sevenZFile ->
+                    var entry = sevenZFile.nextEntry
                     while (entry != null) {
                         val newFile = File(destDir, entry.name)
                         if (entry.isDirectory) {
@@ -479,24 +546,35 @@ class FileRepository(
                         } else {
                             newFile.parentFile?.mkdirs()
                             FileOutputStream(newFile).use { fos ->
-                                zis.copyTo(fos)
+                                val buffer = ByteArray(8192)
+                                var len: Int
+                                while (sevenZFile.read(buffer).also { len = it } > 0) {
+                                    fos.write(buffer, 0, len)
+                                }
                             }
                         }
-                        extractedAny = true
-                        entry = zis.nextEntry
+                        entry = sevenZFile.nextEntry
                     }
                 }
+                return@withContext true
             }
 
-            if (!extractedAny && zipPath.endsWith(".7z", ignoreCase = true)) {
-                // 7z Extraction Fallback
-                val archiveFile = File(zipPath)
-                val destFile = File(destDir, archiveFile.nameWithoutExtension + "_extracted.txt")
-                destFile.writeText("Extracted contents of 7z archive: ${archiveFile.name}\nSize: ${archiveFile.length()} bytes")
-                true
-            } else {
-                true
+            ZipInputStream(BufferedInputStream(FileInputStream(zipPath))).use { zis ->
+                var entry: ZipEntry? = zis.nextEntry
+                while (entry != null) {
+                    val newFile = File(destDir, entry.name)
+                    if (entry.isDirectory) {
+                        newFile.mkdirs()
+                    } else {
+                        newFile.parentFile?.mkdirs()
+                        FileOutputStream(newFile).use { fos ->
+                            zis.copyTo(fos)
+                        }
+                    }
+                    entry = zis.nextEntry
+                }
             }
+            true
         }.getOrDefault(false)
     }
 
