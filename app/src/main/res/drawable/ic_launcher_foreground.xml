@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.68"
+        android:scaleY="0.68">
+        <!-- Main Folder Back & Tab -->
+        <path
+            android:fillColor="#0284C7"
+            android:pathData="M28,34 C28,31.8 29.8,30 32,30 L46,30 L52,36 L76,36 C78.2,36 80,37.8 80,40 L80,74 C80,76.2 78.2,78 76,78 L32,78 C29.8,78 28,76.2 28,74 Z" />
+        <!-- Front Folder Sheet -->
+        <path
+            android:fillColor="#38BDF8"
+            android:pathData="M34,44 L74,44 C75.1,44 76,44.9 76,46 L76,72 C76,73.1 75.1,74 74,74 L34,74 C32.9,74 32,73.1 32,72 L32,46 C32,44.9 32.9,44 34,44 Z" />
+        <!-- Document Detail Lines -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M40,52 L68,52 C69.1,52 70,52.9 70,54 C70,55.1 69.1,56 68,56 L40,56 C38.9,56 38,55.1 38,54 C38,52.9 38.9,52 40,52 Z M40,62 L60,62 C61.1,62 62,62.9 62,64 C62,65.1 61.1,66 60,66 L40,66 C38.9,66 38,65.1 38,64 C38,62.9 38.9,62 40,62 Z" />
+    </group>
+</vector>
