@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -89,8 +90,8 @@ fun BreadcrumbBar(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        tonalElevation = 1.dp
+        color = Color.Black,
+        tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
@@ -104,7 +105,8 @@ fun BreadcrumbBar(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Navigate Back"
+                    contentDescription = "Navigate Back",
+                    tint = Color.White
                 )
             }
 
@@ -122,8 +124,8 @@ fun BreadcrumbBar(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(
-                                if (isLast) MaterialTheme.colorScheme.primaryContainer
-                                else MaterialTheme.colorScheme.surface
+                                if (isLast) Color(0xFF262626)
+                                else Color.Transparent
                             )
                             .clickable { onNavigateToSegment(path) }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -134,8 +136,7 @@ fun BreadcrumbBar(
                                 fontWeight = if (isLast) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 13.sp
                             ),
-                            color = if (isLast) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurface
+                            color = Color.White
                         )
                     }
 
@@ -143,7 +144,7 @@ fun BreadcrumbBar(
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            tint = Color.Gray,
                             modifier = Modifier.size(16.dp).padding(horizontal = 2.dp)
                         )
                     }
@@ -152,14 +153,14 @@ fun BreadcrumbBar(
 
             // Quick Actions
             IconButton(onClick = onOpenSearch, modifier = Modifier.testTag("btn_search")) {
-                Icon(Icons.Default.Search, contentDescription = "Search Files")
+                Icon(Icons.Default.Search, contentDescription = "Search Files", tint = Color.White)
             }
 
             IconButton(onClick = onToggleBookmark, modifier = Modifier.testTag("btn_bookmark")) {
                 Icon(
                     imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                     contentDescription = "Bookmark",
-                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else Color.White
                 )
             }
 
@@ -167,7 +168,7 @@ fun BreadcrumbBar(
                 Icon(
                     imageVector = Icons.Default.Splitscreen,
                     contentDescription = "Toggle Dual Pane",
-                    tint = if (isDualPane) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isDualPane) MaterialTheme.colorScheme.primary else Color.White
                 )
             }
 

@@ -102,12 +102,7 @@ fun FileGridItem(
                         )
                     }
                 } else {
-                    Icon(
-                        imageVector = badgeIcon,
-                        contentDescription = null,
-                        tint = badgeColor,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    FileThumbnail(file, badgeIcon, badgeColor)
                 }
             }
 

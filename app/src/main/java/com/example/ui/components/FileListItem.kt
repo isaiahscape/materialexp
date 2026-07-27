@@ -49,7 +49,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +68,10 @@ import com.example.ui.theme.ColorDoc
 import com.example.ui.theme.ColorFolder
 import com.example.ui.theme.ColorImage
 import com.example.ui.theme.ColorVideo
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.graphics.Bitmap
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -138,12 +145,7 @@ fun FileListItem(
                         )
                     }
                 } else {
-                    Icon(
-                        imageVector = badgeIcon,
-                        contentDescription = null,
-                        tint = badgeColor,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    FileThumbnail(file, badgeIcon, badgeColor)
                 }
             }
 
@@ -225,16 +227,3 @@ fun FileListItem(
     }
 }
 
-fun getCategoryVisuals(category: FileCategory): Pair<ImageVector, Color> {
-    return when (category) {
-        FileCategory.FOLDER -> Icons.Default.Folder to ColorFolder
-        FileCategory.IMAGE -> Icons.Default.Image to ColorImage
-        FileCategory.VIDEO -> Icons.Default.Movie to ColorVideo
-        FileCategory.AUDIO -> Icons.Default.AudioFile to ColorAudio
-        FileCategory.DOCUMENT -> Icons.Default.Description to ColorDoc
-        FileCategory.CODE -> Icons.Default.Code to ColorCode
-        FileCategory.ARCHIVE -> Icons.Default.FolderZip to ColorArchive
-        FileCategory.APK -> Icons.Default.Android to ColorApk
-        else -> Icons.Default.QuestionMark to Color.Gray
-    }
-}

@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,7 +42,7 @@ fun TabBar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = androidx.compose.ui.graphics.Color.Black,
+        color = Color.Black,
         tonalElevation = 0.dp
     ) {
         Row(
@@ -64,8 +65,8 @@ fun TabBar(
                             .testTag("tab_item_$index")
                             .clip(RoundedCornerShape(8.dp))
                             .background(
-                                if (isActive) androidx.compose.ui.graphics.Color(0xFF262626)
-                                else androidx.compose.ui.graphics.Color(0xFF141414)
+                                if (isActive) Color(0xFF262626)
+                                else Color(0xFF141414)
                             )
                             .clickable { onSelectTab(index) }
                             .padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
@@ -74,7 +75,7 @@ fun TabBar(
                         Icon(
                             imageVector = Icons.Default.Folder,
                             contentDescription = null,
-                            tint = if (isActive) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Gray,
+                            tint = if (isActive) Color.White else Color.Gray,
                             modifier = Modifier.size(16.dp)
                         )
 
@@ -86,7 +87,7 @@ fun TabBar(
                                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 12.sp
                             ),
-                            color = if (isActive) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Gray,
+                            color = if (isActive) Color.White else Color.Gray,
                             modifier = Modifier.padding(horizontal = 6.dp)
                         )
 
@@ -94,7 +95,7 @@ fun TabBar(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Close Tab",
-                                tint = androidx.compose.ui.graphics.Color.Gray,
+                                tint = Color.Gray,
                                 modifier = Modifier
                                     .size(16.dp)
                                     .clip(RoundedCornerShape(4.dp))
@@ -115,7 +116,7 @@ fun TabBar(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "New Tab",
-                    tint = androidx.compose.ui.graphics.Color.White,
+                    tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
             }
