@@ -19,3 +19,6 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Suppress R8 warnings for missing zstd-jni which is an optional dependency of commons-compress
+-dontwarn com.github.luben.zstd.ZstdInputStream

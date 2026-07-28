@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.OpenInNew
@@ -59,6 +61,7 @@ fun SettingsScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         Text(
@@ -164,52 +167,6 @@ fun SettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Appearance",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Text(
-                    text = "Switch between light and dark themes",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ThemeOptionPill(
-                        label = "Light",
-                        isSelected = themeMode == ThemeMode.LIGHT,
-                        onClick = { onSetThemeMode(ThemeMode.LIGHT) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ThemeOptionPill(
-                        label = "Dark",
-                        isSelected = themeMode == ThemeMode.DARK,
-                        onClick = { onSetThemeMode(ThemeMode.DARK) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ThemeOptionPill(
-                        label = "Auto",
-                        isSelected = themeMode == ThemeMode.SYSTEM,
-                        onClick = { onSetThemeMode(ThemeMode.SYSTEM) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
                     text = "Root & Superuser Modding",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
@@ -243,52 +200,6 @@ fun SettingsScreen(
                     ) {
                         Text("Get root access")
                     }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Appearance",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Text(
-                    text = "Switch between light and dark themes",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ThemeOptionPill(
-                        label = "Light",
-                        isSelected = themeMode == ThemeMode.LIGHT,
-                        onClick = { onSetThemeMode(ThemeMode.LIGHT) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ThemeOptionPill(
-                        label = "Dark",
-                        isSelected = themeMode == ThemeMode.DARK,
-                        onClick = { onSetThemeMode(ThemeMode.DARK) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ThemeOptionPill(
-                        label = "Auto",
-                        isSelected = themeMode == ThemeMode.SYSTEM,
-                        onClick = { onSetThemeMode(ThemeMode.SYSTEM) },
-                        modifier = Modifier.weight(1f)
-                    )
                 }
             }
         }
