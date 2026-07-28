@@ -160,9 +160,9 @@ fun ExplorerMainScreen(
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -8f) {
+                if (available.y < -15f && isNavBarVisible) {
                     isNavBarVisible = false
-                } else if (available.y > 8f) {
+                } else if (available.y > 15f && !isNavBarVisible) {
                     isNavBarVisible = true
                 }
                 return Offset.Zero

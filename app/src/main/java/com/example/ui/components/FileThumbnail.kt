@@ -1,7 +1,6 @@
 package com.example.ui.components
 
 import android.graphics.Bitmap
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -21,12 +20,14 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.example.data.model.FileCategory
 import com.example.data.model.FileItem
 import com.example.ui.theme.ColorApk
@@ -59,22 +60,20 @@ fun FileThumbnail(
         }
     }
 
+    val placeholderPainter = rememberVectorPainter(image = fallbackIcon)
+
     if (file.category == FileCategory.IMAGE || file.category == FileCategory.VIDEO) {
-        SubcomposeAsyncImage(
-            model = file.path,
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(file.path)
+                .crossfade(true)
+                .size(128) // Fixed small size for thumbnails to save memory
+                .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = modifier.fillMaxSize(),
-            error = {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = fallbackIcon,
-                        contentDescription = null,
-                        tint = badgeColor,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+            placeholder = placeholderPainter,
+            error = placeholderPainter,
+            modifier = modifier.fillMaxSize()
         )
     } else if (thumbnail != null) {
         AsyncImage(

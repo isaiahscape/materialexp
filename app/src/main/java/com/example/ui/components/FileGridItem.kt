@@ -62,11 +62,11 @@ fun FileGridItem(
             .fillMaxWidth()
             .testTag("file_grid_${file.name}")
             .scale(scale)
-            .clip(RoundedCornerShape(16.dp))
             .combinedClickable(
                 onClick = onItemClick,
                 onLongClick = onItemLongClick
             ),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
             else MaterialTheme.colorScheme.surface
