@@ -354,7 +354,30 @@ class FileRepository(
 
         val tempFile = File(trashFolder, "${System.currentTimeMillis()}_${item.name}")
 
-        val moved = target.renameTo(tempFile)
+        // Attempt direct rename (fastest, but only works on same partition)
+        var moved = target.renameTo(tempFile)
+        
+        // If rename fails (e.g. cross-partition), try copy-and-delete
+        if (!moved) {
+            try {
+                if (item.isDirectory) {
+                    target.copyRecursively(tempFile, overwrite = true)
+                    target.deleteRecursively()
+                } else {
+                    target.inputStream().use { input ->
+                        tempFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    target.delete()
+                }
+                moved = true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return@withContext false
+            }
+        }
+
         if (moved) {
             dao.insertTrashItem(
                 TrashEntity(
@@ -366,10 +389,7 @@ class FileRepository(
                 )
             )
             true
-        } else {
-            // Fallback permanent delete
-            target.deleteRecursively()
-        }
+        } else false
     }
 
     suspend fun restoreFromTrash(entity: TrashEntity): Boolean = withContext(Dispatchers.IO) {
@@ -380,7 +400,28 @@ class FileRepository(
             return@withContext false
         }
         orig.parentFile?.mkdirs()
-        val restored = temp.renameTo(orig)
+        
+        var restored = temp.renameTo(orig)
+        if (!restored) {
+            try {
+                if (entity.isDirectory) {
+                    temp.copyRecursively(orig, overwrite = true)
+                    temp.deleteRecursively()
+                } else {
+                    temp.inputStream().use { input ->
+                        orig.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    temp.delete()
+                }
+                restored = true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return@withContext false
+            }
+        }
+
         if (restored) {
             dao.deleteTrashItem(entity)
         }

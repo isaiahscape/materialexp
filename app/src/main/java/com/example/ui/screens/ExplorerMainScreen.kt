@@ -977,7 +977,8 @@ private fun DirectoryContentView(
                         onItemLongClick = { viewModel.toggleFileSelection(item.path) },
                         onInspectDetails = { viewModel.inspectFileDetails(item) },
                         onRename = { viewModel.inspectFileDetails(item) },
-                        onDelete = { viewModel.deleteSelectedItems() },
+                        onDelete = { viewModel.deleteItemToTrash(item) },
+                        onDeletePermanently = { viewModel.deletePermanently(item) },
                         onZip = { viewModel.toggleFileSelection(item.path) }
                     )
                 }

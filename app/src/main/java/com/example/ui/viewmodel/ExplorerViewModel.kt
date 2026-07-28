@@ -424,6 +424,21 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun deleteItemToTrash(item: FileItem) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            repository.deleteToTrash(item)
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    userNotice = "Moved '${item.name}' to Recycle Bin"
+                )
+            }
+            loadCurrentDirectory()
+            loadStorageStats()
+        }
+    }
+
     fun deleteSelectedPermanently() {
         val state = _uiState.value
         val selectedItems = state.files.filter { state.selectedFilePaths.contains(it.path) }
@@ -436,6 +451,21 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
                 it.copy(
                     selectedFilePaths = emptySet(),
                     userNotice = "Permanently deleted ${selectedItems.size} items"
+                )
+            }
+            loadCurrentDirectory()
+            loadStorageStats()
+        }
+    }
+
+    fun deletePermanently(item: FileItem) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            repository.deletePermanently(item)
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    userNotice = "Permanently deleted '${item.name}'"
                 )
             }
             loadCurrentDirectory()

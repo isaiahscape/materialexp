@@ -83,6 +83,7 @@ fun FileListItem(
     onInspectDetails: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onDeletePermanently: () -> Unit,
     onZip: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -220,6 +221,10 @@ fun FileListItem(
                     DropdownMenuItem(
                         text = { Text("Move to Recycle Bin") },
                         onClick = { showMenu = false; onDelete() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete Permanently", color = MaterialTheme.colorScheme.error) },
+                        onClick = { showMenu = false; onDeletePermanently() }
                     )
                 }
             }
