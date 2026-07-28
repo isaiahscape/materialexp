@@ -6,6 +6,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,11 +30,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.FileItem
+import java.util.Locale
 
 @Composable
 fun AudioPlayerBar(
     audioFile: FileItem?,
     isPlaying: Boolean,
+    progress: Float,
+    currentPosition: Long,
+    duration: Long,
     onTogglePlay: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
@@ -83,11 +88,19 @@ fun AudioPlayerBar(
                                     maxLines = 1,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
-                                Text(
-                                    text = if (isPlaying) "Playing..." else "Paused",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = if (isPlaying) "Playing" else "Paused",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                    )
+                                    Spacer(modifier = Modifier.size(8.dp))
+                                    Text(
+                                        text = "${formatTime(currentPosition)} / ${formatTime(duration)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                    )
+                                }
                             }
                         }
 
@@ -117,11 +130,21 @@ fun AudioPlayerBar(
                     }
 
                     LinearProgressIndicator(
-                        progress = { if (isPlaying) 0.45f else 0.10f },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.1f)
                     )
                 }
             }
         }
     }
+}
+
+private fun formatTime(ms: Long): String {
+    if (ms <= 0) return "00:00"
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }

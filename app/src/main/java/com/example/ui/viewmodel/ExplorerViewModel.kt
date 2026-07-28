@@ -3,6 +3,7 @@ package com.example.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.audio.VlcPlayerManager
 import com.example.data.local.AppDatabase
 import com.example.data.local.BookmarkEntity
 import com.example.data.local.TrashEntity
@@ -55,6 +56,9 @@ data class ExplorerUiState(
     val activeImageViewerFile: FileItem? = null,
     val activeAudioFile: FileItem? = null,
     val isAudioPlaying: Boolean = false,
+    val audioProgress: Float = 0f,
+    val audioPosition: Long = 0,
+    val audioDuration: Long = 0,
     val activeZipFile: FileItem? = null,
     val zipEntries: List<String> = emptyList(),
     val inspectedFile: FileItem? = null,
@@ -75,6 +79,8 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     private val _uiState = MutableStateFlow(ExplorerUiState())
     val uiState: StateFlow<ExplorerUiState> = _uiState.asStateFlow()
+
+    private val vlcPlayerManager = VlcPlayerManager(application)
 
     init {
         checkStoragePermission()
@@ -99,6 +105,22 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
         loadCurrentDirectory()
         loadStorageStats()
         checkRootStatus()
+        observeAudioPlayback()
+    }
+
+    private fun observeAudioPlayback() {
+        viewModelScope.launch {
+            vlcPlayerManager.playbackState.collect { state ->
+                _uiState.update {
+                    it.copy(
+                        isAudioPlaying = state.isPlaying,
+                        audioProgress = state.progress,
+                        audioPosition = state.currentPosition,
+                        audioDuration = state.duration
+                    )
+                }
+            }
+        }
     }
 
     fun checkStoragePermission() {
@@ -562,15 +584,22 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openAudioPlayer(fileItem: FileItem) {
-        _uiState.update { it.copy(activeAudioFile = fileItem, isAudioPlaying = true) }
+        _uiState.update { it.copy(activeAudioFile = fileItem) }
+        vlcPlayerManager.play(fileItem.path)
     }
 
     fun toggleAudioPlayback() {
-        _uiState.update { it.copy(isAudioPlaying = !it.isAudioPlaying) }
+        vlcPlayerManager.togglePlay()
     }
 
     fun closeAudioPlayer() {
-        _uiState.update { it.copy(activeAudioFile = null, isAudioPlaying = false) }
+        vlcPlayerManager.stop()
+        _uiState.update { it.copy(activeAudioFile = null) }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        vlcPlayerManager.release()
     }
 
     fun inspectFileDetails(fileItem: FileItem) {

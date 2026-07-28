@@ -634,6 +634,9 @@ fun ExplorerMainScreen(
                 AudioPlayerBar(
                     audioFile = state.activeAudioFile,
                     isPlaying = state.isAudioPlaying,
+                    progress = state.audioProgress,
+                    currentPosition = state.audioPosition,
+                    duration = state.audioDuration,
                     onTogglePlay = { viewModel.toggleAudioPlayback() },
                     onClose = { viewModel.closeAudioPlayer() },
                     modifier = Modifier.align(Alignment.BottomCenter)
