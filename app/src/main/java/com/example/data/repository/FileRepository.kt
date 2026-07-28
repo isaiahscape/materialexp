@@ -392,6 +392,13 @@ class FileRepository(
         dao.deleteTrashItem(entity)
     }
 
+    suspend fun deletePermanently(item: FileItem): Boolean = withContext(Dispatchers.IO) {
+        val target = File(item.path)
+        if (target.exists()) {
+            target.deleteRecursively()
+        } else false
+    }
+
     suspend fun emptyTrash() = withContext(Dispatchers.IO) {
         val trashFolder = File(context.cacheDir, "trash")
         trashFolder.deleteRecursively()
