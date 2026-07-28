@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.StorageStats
+import com.example.ui.components.StorageOverviewCard
 import com.example.ui.theme.ColorApk
 import com.example.ui.theme.ColorArchive
 import com.example.ui.theme.ColorAudio
@@ -61,10 +62,6 @@ fun StorageAnalyzerScreen(
         return
     }
 
-    val usedGb = stats.usedBytes / (1024.0 * 1024.0 * 1024.0)
-    val totalGb = stats.totalBytes / (1024.0 * 1024.0 * 1024.0)
-    val freeGb = stats.freeBytes / (1024.0 * 1024.0 * 1024.0)
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -85,58 +82,7 @@ fun StorageAnalyzerScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Large Usage Progress Meter Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("card_storage_overview"),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Column {
-                        Text(
-                            text = String.format(Locale.getDefault(), "%.1f GB Used", usedGb),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = String.format(Locale.getDefault(), "of %.1f GB Total (%.1f GB Free)", totalGb, freeGb),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        )
-                    }
-
-                    Text(
-                        text = "${(stats.usedRatio * 100).toInt()}%",
-                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LinearProgressIndicator(
-                    progress = { stats.usedRatio },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(12.dp)
-                        .clip(RoundedCornerShape(6.dp)),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surface
-                )
-            }
-        }
+        StorageOverviewCard(stats = stats)
 
         Spacer(modifier = Modifier.height(24.dp))
 

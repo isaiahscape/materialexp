@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MusicNote
@@ -140,6 +141,7 @@ import com.example.ui.components.SearchAndFilterHeader
 import com.example.ui.components.TabBar
 import com.example.ui.components.TextEditorSheet
 import com.example.ui.components.ZipViewerDialog
+import com.example.ui.screens.HomeScreen
 import com.example.ui.viewmodel.ExplorerViewModel
 import com.example.ui.viewmodel.NavigationScreen
 import com.example.ui.viewmodel.ViewMode
@@ -236,6 +238,17 @@ fun ExplorerMainScreen(
 
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        label = { Text("Home") },
+                        selected = state.currentScreen == NavigationScreen.HOME,
+                        onClick = {
+                            viewModel.switchScreen(NavigationScreen.HOME)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.testTag("drawer_item_home")
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
                         label = { Text("Explorer") },
                         selected = state.currentScreen == NavigationScreen.EXPLORER && activeTab?.currentPath != "/",
                         onClick = {
@@ -243,6 +256,17 @@ fun ExplorerMainScreen(
                             scope.launch { drawerState.close() }
                         },
                         modifier = Modifier.testTag("drawer_item_explorer")
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        label = { Text("Home") },
+                        selected = state.currentScreen == NavigationScreen.HOME,
+                        onClick = {
+                            viewModel.switchScreen(NavigationScreen.HOME)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.testTag("drawer_item_home")
                     )
 
                     NavigationDrawerItem(
@@ -271,6 +295,17 @@ fun ExplorerMainScreen(
                         externalDrives.forEach { drive ->
                             val isDriveActive = state.currentScreen == NavigationScreen.EXPLORER && activeTab?.currentPath == drive.path
                             NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        label = { Text("Home") },
+                        selected = state.currentScreen == NavigationScreen.HOME,
+                        onClick = {
+                            viewModel.switchScreen(NavigationScreen.HOME)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.testTag("drawer_item_home")
+                    )
+
+                    NavigationDrawerItem(
                                 icon = {
                                     Icon(
                                         imageVector = if (drive.iconType == "USB_OTG") Icons.Default.Usb else Icons.Default.SdCard,
@@ -291,6 +326,17 @@ fun ExplorerMainScreen(
                     }
 
                     NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        label = { Text("Home") },
+                        selected = state.currentScreen == NavigationScreen.HOME,
+                        onClick = {
+                            viewModel.switchScreen(NavigationScreen.HOME)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.testTag("drawer_item_home")
+                    )
+
+                    NavigationDrawerItem(
                         icon = { Icon(Icons.Default.PieChart, contentDescription = null) },
                         label = { Text("Storage Analyzer") },
                         selected = state.currentScreen == NavigationScreen.STORAGE_ANALYZER,
@@ -299,6 +345,17 @@ fun ExplorerMainScreen(
                             scope.launch { drawerState.close() }
                         },
                         modifier = Modifier.testTag("drawer_item_analyzer")
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        label = { Text("Home") },
+                        selected = state.currentScreen == NavigationScreen.HOME,
+                        onClick = {
+                            viewModel.switchScreen(NavigationScreen.HOME)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.testTag("drawer_item_home")
                     )
 
                     NavigationDrawerItem(
@@ -313,6 +370,17 @@ fun ExplorerMainScreen(
                     )
 
                     NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        label = { Text("Home") },
+                        selected = state.currentScreen == NavigationScreen.HOME,
+                        onClick = {
+                            viewModel.switchScreen(NavigationScreen.HOME)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.testTag("drawer_item_home")
+                    )
+
+                    NavigationDrawerItem(
                         icon = { Icon(Icons.Default.Recycling, contentDescription = null) },
                         label = { Text("Recycle Bin") },
                         selected = state.currentScreen == NavigationScreen.TRASH_BIN,
@@ -321,6 +389,17 @@ fun ExplorerMainScreen(
                             scope.launch { drawerState.close() }
                         },
                         modifier = Modifier.testTag("drawer_item_trash")
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        label = { Text("Home") },
+                        selected = state.currentScreen == NavigationScreen.HOME,
+                        onClick = {
+                            viewModel.switchScreen(NavigationScreen.HOME)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.testTag("drawer_item_home")
                     )
 
                     NavigationDrawerItem(
@@ -344,6 +423,7 @@ fun ExplorerMainScreen(
                     title = {
                         Text(
                             text = when (state.currentScreen) {
+                                NavigationScreen.HOME -> "Material Explorer"
                                 NavigationScreen.EXPLORER -> {
                                     if (state.categoryFilter != FileCategory.ALL && state.categoryFilter != FileCategory.FOLDER) {
                                         "Searching: ${state.categoryFilter.name.lowercase().replaceFirstChar { it.uppercase() }}"
@@ -391,6 +471,24 @@ fun ExplorerMainScreen(
                     label = "screenTransition"
                 ) { targetScreen ->
                     when (targetScreen) {
+                        NavigationScreen.HOME -> {
+                            HomeScreen(
+                                storageStats = state.storageStats,
+                                storageDrives = state.storageDrives,
+                                onCategoryClick = { category ->
+                                    viewModel.setCategoryFilter(category)
+                                    viewModel.switchScreen(NavigationScreen.EXPLORER)
+                                },
+                                onDriveClick = { path ->
+                                    viewModel.navigateTo(path)
+                                    viewModel.switchScreen(NavigationScreen.EXPLORER)
+                                },
+                                onStorageAnalyzerClick = {
+                                    viewModel.switchScreen(NavigationScreen.STORAGE_ANALYZER)
+                                }
+                            )
+                        }
+
                         NavigationScreen.EXPLORER -> {
                             Column(modifier = Modifier.fillMaxSize()) {
                                 // Multi-Tab Bar
@@ -789,6 +887,23 @@ fun ExplorerMainScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                val isHome = state.currentScreen == NavigationScreen.HOME
+                                IconButton(
+                                    onClick = { viewModel.switchScreen(NavigationScreen.HOME) },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isHome) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                        .testTag("nav_home")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Home,
+                                        contentDescription = "Home",
+                                        tint = if (isHome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
                                 val isExplorer = state.currentScreen == NavigationScreen.EXPLORER
                                 IconButton(
                                     onClick = { viewModel.switchScreen(NavigationScreen.EXPLORER) },

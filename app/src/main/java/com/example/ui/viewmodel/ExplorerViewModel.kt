@@ -23,7 +23,7 @@ import java.util.UUID
 
 enum class ViewMode { DETAILED_LIST, COMPACT_LIST, GRID_2, GRID_3 }
 enum class SortMode { NAME_ASC, NAME_DESC, SIZE_ASC, SIZE_DESC, DATE_ASC, DATE_DESC, TYPE }
-enum class NavigationScreen { EXPLORER, STORAGE_ANALYZER, TRASH_BIN, BOOKMARKS, SETTINGS }
+enum class NavigationScreen { HOME, EXPLORER, STORAGE_ANALYZER, TRASH_BIN, BOOKMARKS, SETTINGS }
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
 data class ExplorerUiState(
@@ -43,7 +43,7 @@ data class ExplorerUiState(
     val showHiddenFiles: Boolean = false,
     val isDualPaneEnabled: Boolean = false,
     val openWithPromptOnTap: Boolean = true,
-    val currentScreen: NavigationScreen = NavigationScreen.EXPLORER,
+    val currentScreen: NavigationScreen = NavigationScreen.HOME,
     val storageStats: StorageStats? = null,
     val bookmarks: List<BookmarkEntity> = emptyList(),
     val trashItems: List<TrashEntity> = emptyList(),
