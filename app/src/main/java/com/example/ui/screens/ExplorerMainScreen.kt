@@ -20,6 +20,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -81,6 +82,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -123,6 +125,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
+import android.net.Uri
+import android.webkit.MimeTypeMap
+import coil.compose.AsyncImage
 import com.example.data.model.ArchiveFormat
 import com.example.data.model.ArchiveOptions
 import com.example.data.model.CompressionLevel
@@ -1432,6 +1440,27 @@ private fun OpenWithDialog(
     onRequireInstallPermission: () -> Unit
 ) {
     val context = LocalContext.current
+    val mimeType = remember(file) { getMimeType(file) }
+    
+    val externalApps = remember(file, mimeType) {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            val javaFile = java.io.File(file.path)
+            val uri = try {
+                androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    javaFile
+                )
+            } catch (e: Exception) {
+                Uri.fromFile(javaFile)
+            }
+            setDataAndType(uri, mimeType)
+        }
+        val pm = context.packageManager
+        pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            .filter { it.activityInfo.packageName != context.packageName }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -1448,46 +1477,60 @@ private fun OpenWithDialog(
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OpenWithOptionRow(
-                    icon = Icons.Default.EditNote,
-                    title = "Code / Text Editor",
-                    subtitle = "Open in built-in editor",
-                    onClick = {
-                        onDismiss()
-                        viewModel.openTextEditor(file)
-                    }
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Built-in Tools (Filtered)
+                if (file.category == FileCategory.CODE || file.category == FileCategory.DOCUMENT) {
+                    OpenWithOptionRow(
+                        icon = Icons.Default.EditNote,
+                        title = "Code / Text Editor",
+                        subtitle = "Open in built-in editor",
+                        onClick = {
+                            onDismiss()
+                            viewModel.openTextEditor(file)
+                        }
+                    )
+                }
 
-                OpenWithOptionRow(
-                    icon = Icons.Default.Image,
-                    title = "Image Viewer",
-                    subtitle = "View in built-in image viewer",
-                    onClick = {
-                        onDismiss()
-                        viewModel.openImageViewer(file)
-                    }
-                )
+                if (file.category == FileCategory.IMAGE) {
+                    OpenWithOptionRow(
+                        icon = Icons.Default.Image,
+                        title = "Image Viewer",
+                        subtitle = "View in built-in image viewer",
+                        onClick = {
+                            onDismiss()
+                            viewModel.openImageViewer(file)
+                        }
+                    )
+                }
 
-                OpenWithOptionRow(
-                    icon = Icons.Default.MusicNote,
-                    title = "Audio Player",
-                    subtitle = "Play in built-in audio player",
-                    onClick = {
-                        onDismiss()
-                        viewModel.openAudioPlayer(file)
-                    }
-                )
+                if (file.category == FileCategory.AUDIO) {
+                    OpenWithOptionRow(
+                        icon = Icons.Default.MusicNote,
+                        title = "Audio Player",
+                        subtitle = "Play in built-in audio player",
+                        onClick = {
+                            onDismiss()
+                            viewModel.openAudioPlayer(file)
+                        }
+                    )
+                }
 
-                OpenWithOptionRow(
-                    icon = Icons.Default.FolderZip,
-                    title = "Zip / Archive Inspector",
-                    subtitle = "Inspect zip entries & extract",
-                    onClick = {
-                        onDismiss()
-                        viewModel.inspectZipArchive(file)
-                    }
-                )
+                if (file.category == FileCategory.ARCHIVE) {
+                    OpenWithOptionRow(
+                        icon = Icons.Default.FolderZip,
+                        title = "Zip / Archive Inspector",
+                        subtitle = "Inspect zip entries & extract",
+                        onClick = {
+                            onDismiss()
+                            viewModel.inspectZipArchive(file)
+                        }
+                    )
+                }
 
                 OpenWithOptionRow(
                     icon = Icons.Default.Info,
@@ -1499,13 +1542,73 @@ private fun OpenWithDialog(
                     }
                 )
 
+                if (externalApps.isNotEmpty()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Text(
+                        text = "External Applications",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+
+                    externalApps.forEach { resolveInfo ->
+                        val pm = context.packageManager
+                        Surface(
+                            onClick = {
+                                onDismiss()
+                                launchExternalApp(context, file, resolveInfo, onRequireInstallPermission)
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                AsyncImage(
+                                    model = resolveInfo.loadIcon(pm),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = resolveInfo.loadLabel(pm).toString(),
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                    Text(
+                                        text = resolveInfo.activityInfo.packageName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                
                 OpenWithOptionRow(
                     icon = Icons.Default.OpenInNew,
-                    title = "System Default App",
-                    subtitle = "Open with external Android application",
+                    title = "System Default / Chooser",
+                    subtitle = "Select from all compatible apps",
                     onClick = {
                         onDismiss()
                         openWithSystemDefault(context, file, viewModel, onRequireInstallPermission)
+                    }
+                )
+
+                OpenWithOptionRow(
+                    icon = Icons.Default.FilterList,
+                    title = "Open as any type (*/*)",
+                    subtitle = "Force system to show all handlers",
+                    onClick = {
+                        onDismiss()
+                        openWithSystemDefault(context, file, viewModel, onRequireInstallPermission, mimeOverride = "*/*")
                     }
                 )
             }
@@ -1557,7 +1660,13 @@ private fun OpenWithOptionRow(
     }
 }
 
-private fun openWithSystemDefault(context: Context, file: FileItem, viewModel: ExplorerViewModel, onRequireInstallPermission: () -> Unit) {
+private fun openWithSystemDefault(
+    context: Context,
+    file: FileItem,
+    viewModel: ExplorerViewModel,
+    onRequireInstallPermission: () -> Unit,
+    mimeOverride: String? = null
+) {
     if (file.extension.lowercase() == "apk") {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             if (!context.packageManager.canRequestPackageInstalls()) {
@@ -1567,24 +1676,60 @@ private fun openWithSystemDefault(context: Context, file: FileItem, viewModel: E
         }
     }
     try {
-        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
             val javaFile = java.io.File(file.path)
             val uri = androidx.core.content.FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
                 javaFile
             )
-            val mime = when (file.extension.lowercase()) {
-                "apk" -> "application/vnd.android.package-archive"
-                "dng" -> "image/x-adobe-dng"
-                else -> android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "*/*"
-            }
+            val mime = mimeOverride ?: getMimeType(file)
             setDataAndType(uri, mime)
-            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(android.content.Intent.createChooser(intent, "Open with"))
+        context.startActivity(Intent.createChooser(intent, "Open with"))
     } catch (e: Exception) {
         viewModel.showNotice("No external app available for ${file.name}")
+    }
+}
+
+private fun launchExternalApp(
+    context: Context,
+    file: FileItem,
+    resolveInfo: ResolveInfo,
+    onRequireInstallPermission: () -> Unit
+) {
+    if (file.extension.lowercase() == "apk") {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                onRequireInstallPermission()
+                return
+            }
+        }
+    }
+    try {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            val javaFile = java.io.File(file.path)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                javaFile
+            )
+            setDataAndType(uri, getMimeType(file))
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            setClassName(resolveInfo.activityInfo.packageName, resolveInfo.activityInfo.name)
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Failed to launch ${resolveInfo.loadLabel(context.packageManager)}", Toast.LENGTH_SHORT).show()
+    }
+}
+
+private fun getMimeType(file: FileItem): String {
+    return when (file.extension.lowercase()) {
+        "apk" -> "application/vnd.android.package-archive"
+        "dng" -> "image/x-adobe-dng"
+        else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "*/*"
     }
 }
 
