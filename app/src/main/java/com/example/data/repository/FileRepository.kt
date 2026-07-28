@@ -6,22 +6,41 @@ import android.provider.MediaStore
 import com.example.data.local.BookmarkEntity
 import com.example.data.local.ExplorerDao
 import com.example.data.local.TrashEntity
+import com.example.data.model.ArchiveFormat
+import com.example.data.model.ArchiveOptions
+import com.example.data.model.CompressionLevel
 import com.example.data.model.FileCategory
 import com.example.data.model.FileItem
 import com.example.data.model.StorageStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import org.apache.commons.compress.archivers.ArchiveEntry
+import org.apache.commons.compress.archivers.ArchiveInputStream
+import org.apache.commons.compress.archivers.ArchiveOutputStream
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream
+import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import java.security.MessageDigest
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
 
 class FileRepository(
     private val context: Context,
@@ -471,48 +490,106 @@ class FileRepository(
         }.getOrDefault("Error computing $algorithm")
     }
 
-    suspend fun zipFiles(sourcePaths: List<String>, destinationZipPath: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun createArchive(
+        sourcePaths: List<String>,
+        destinationPath: String,
+        options: ArchiveOptions
+    ): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            FileOutputStream(destinationZipPath).use { fos ->
-                ZipOutputStream(BufferedOutputStream(fos)).use { zos ->
-                    sourcePaths.forEach { srcPath ->
-                        val srcFile = File(srcPath)
-                        compressFileToZip(srcFile, srcFile.name, zos)
+            val destFile = File(destinationPath)
+            if (options.format == ArchiveFormat.SEVEN_Z) {
+                SevenZOutputFile(destFile).use { szOut ->
+                    sourcePaths.forEach { path ->
+                        val file = File(path)
+                        addFileToSevenZ(szOut, file, file.name)
                     }
+                }
+            } else {
+                val fos = FileOutputStream(destFile)
+                val bos = BufferedOutputStream(fos)
+                
+                val wrappedOut: OutputStream = when (options.format) {
+                    ArchiveFormat.TAR_GZ -> GzipCompressorOutputStream(bos)
+                    ArchiveFormat.TAR_BZ2 -> BZip2CompressorOutputStream(bos)
+                    ArchiveFormat.TAR_XZ -> XZCompressorOutputStream(bos)
+                    else -> bos
+                }
+                
+                val aos: ArchiveOutputStream<ArchiveEntry> = when (options.format) {
+                    ArchiveFormat.ZIP -> ZipArchiveOutputStream(wrappedOut).apply {
+                        setLevel(options.level.level)
+                    } as ArchiveOutputStream<ArchiveEntry>
+                    ArchiveFormat.TAR, ArchiveFormat.TAR_GZ, ArchiveFormat.TAR_BZ2, ArchiveFormat.TAR_XZ -> TarArchiveOutputStream(wrappedOut) as ArchiveOutputStream<ArchiveEntry>
+                    else -> throw IllegalArgumentException("Unsupported format")
+                }
+                
+                aos.use { out ->
+                    sourcePaths.forEach { path ->
+                        val file = File(path)
+                        addFileToArchive(out, file, file.name)
+                    }
+                    out.finish()
                 }
             }
             true
         }.getOrDefault(false)
     }
 
-    private fun compressFileToZip(file: File, parentName: String, zos: ZipOutputStream) {
+    private fun addFileToArchive(aos: ArchiveOutputStream<ArchiveEntry>, file: File, entryName: String) {
         if (file.isDirectory) {
-            val children = file.listFiles() ?: return
-            for (child in children) {
-                compressFileToZip(child, "$parentName/${child.name}", zos)
+            val entry = aos.createArchiveEntry(file, "$entryName/")
+            aos.putArchiveEntry(entry)
+            aos.closeArchiveEntry()
+            file.listFiles()?.forEach { child ->
+                addFileToArchive(aos, child, "$entryName/${child.name}")
             }
         } else {
-            val entry = ZipEntry(parentName)
-            zos.putNextEntry(entry)
-            FileInputStream(file).use { fis ->
-                fis.copyTo(zos)
-            }
-            zos.closeEntry()
+            val entry = aos.createArchiveEntry(file, entryName)
+            aos.putArchiveEntry(entry)
+            file.inputStream().use { it.copyTo(aos) }
+            aos.closeArchiveEntry()
         }
     }
 
+    private fun addFileToSevenZ(szOut: SevenZOutputFile, file: File, entryName: String) {
+        if (file.isDirectory) {
+            val entry = szOut.createArchiveEntry(file, "$entryName/")
+            szOut.putArchiveEntry(entry)
+            szOut.closeArchiveEntry()
+            file.listFiles()?.forEach { child ->
+                addFileToSevenZ(szOut, child, "$entryName/${child.name}")
+            }
+        } else {
+            val entry = szOut.createArchiveEntry(file, entryName)
+            szOut.putArchiveEntry(entry)
+            file.inputStream().use { input ->
+                val buffer = ByteArray(8192)
+                var len: Int
+                while (input.read(buffer).also { len = it } > 0) {
+                    szOut.write(buffer, 0, len)
+                }
+            }
+            szOut.closeArchiveEntry()
+        }
+    }
+
+    suspend fun zipFiles(sourcePaths: List<String>, destinationZipPath: String): Boolean = 
+        createArchive(sourcePaths, destinationZipPath, ArchiveOptions(ArchiveFormat.ZIP))
+
+
     suspend fun readZipEntries(zipPath: String): List<String> = withContext(Dispatchers.IO) {
-        val zipFile = File(zipPath)
-        if (!zipFile.exists() || !zipFile.isFile) return@withContext emptyList()
+        val file = File(zipPath)
+        if (!file.exists() || !file.isFile) return@withContext emptyList()
         val entries = mutableListOf<String>()
+        val pathLower = zipPath.lowercase()
         
-        if (zipPath.endsWith(".7z", ignoreCase = true)) {
+        if (pathLower.endsWith(".7z")) {
             runCatching {
-                SevenZFile.Builder().setFile(zipFile).get().use { sevenZFile ->
-                    var entry = sevenZFile.nextEntry
+                SevenZFile.Builder().setFile(file).get().use { szFile ->
+                    var entry = szFile.nextEntry
                     while (entry != null) {
                         entries.add(entry.name)
-                        entry = sevenZFile.nextEntry
+                        entry = szFile.nextEntry
                     }
                 }
             }
@@ -520,11 +597,31 @@ class FileRepository(
         }
         
         runCatching {
-            ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
-                var entry: ZipEntry? = zis.nextEntry
-                while (entry != null) {
-                    entries.add(entry.name)
-                    entry = zis.nextEntry
+            val fis = FileInputStream(file)
+            val bis = BufferedInputStream(fis)
+            
+            val isIn: InputStream = when {
+                pathLower.endsWith(".tar.gz") || pathLower.endsWith(".tgz") -> GzipCompressorInputStream(bis)
+                pathLower.endsWith(".tar.bz2") || pathLower.endsWith(".tbz2") -> BZip2CompressorInputStream(bis)
+                pathLower.endsWith(".tar.xz") || pathLower.endsWith(".txz") -> XZCompressorInputStream(bis)
+                else -> bis
+            }
+            
+            if (pathLower.endsWith(".zip")) {
+                ZipArchiveInputStream(isIn).use { zis ->
+                    var entry = zis.nextZipEntry
+                    while (entry != null) {
+                        entries.add(entry.name)
+                        entry = zis.nextZipEntry
+                    }
+                }
+            } else if (pathLower.contains(".tar")) {
+                TarArchiveInputStream(isIn).use { tais ->
+                    var entry = tais.nextTarEntry
+                    while (entry != null) {
+                        entries.add(entry.name)
+                        entry = tais.nextTarEntry
+                    }
                 }
             }
         }
@@ -535,10 +632,12 @@ class FileRepository(
         runCatching {
             val destDir = File(destDirPath)
             if (!destDir.exists()) destDir.mkdirs()
+            val file = File(zipPath)
+            val pathLower = zipPath.lowercase()
 
-            if (zipPath.endsWith(".7z", ignoreCase = true)) {
-                SevenZFile.Builder().setFile(File(zipPath)).get().use { sevenZFile ->
-                    var entry = sevenZFile.nextEntry
+            if (pathLower.endsWith(".7z")) {
+                SevenZFile.Builder().setFile(file).get().use { szFile ->
+                    var entry = szFile.nextEntry
                     while (entry != null) {
                         val newFile = File(destDir, entry.name)
                         if (entry.isDirectory) {
@@ -548,30 +647,54 @@ class FileRepository(
                             FileOutputStream(newFile).use { fos ->
                                 val buffer = ByteArray(8192)
                                 var len: Int
-                                while (sevenZFile.read(buffer).also { len = it } > 0) {
+                                while (szFile.read(buffer).also { len = it } > 0) {
                                     fos.write(buffer, 0, len)
                                 }
                             }
                         }
-                        entry = sevenZFile.nextEntry
+                        entry = szFile.nextEntry
                     }
                 }
                 return@withContext true
             }
 
-            ZipInputStream(BufferedInputStream(FileInputStream(zipPath))).use { zis ->
-                var entry: ZipEntry? = zis.nextEntry
-                while (entry != null) {
-                    val newFile = File(destDir, entry.name)
-                    if (entry.isDirectory) {
-                        newFile.mkdirs()
-                    } else {
-                        newFile.parentFile?.mkdirs()
-                        FileOutputStream(newFile).use { fos ->
-                            zis.copyTo(fos)
+            val fis = FileInputStream(file)
+            val bis = BufferedInputStream(fis)
+            
+            val isIn: InputStream = when {
+                pathLower.endsWith(".tar.gz") || pathLower.endsWith(".tgz") -> GzipCompressorInputStream(bis)
+                pathLower.endsWith(".tar.bz2") || pathLower.endsWith(".tbz2") -> BZip2CompressorInputStream(bis)
+                pathLower.endsWith(".tar.xz") || pathLower.endsWith(".txz") -> XZCompressorInputStream(bis)
+                else -> bis
+            }
+
+            if (pathLower.endsWith(".zip")) {
+                ZipArchiveInputStream(isIn).use { zis ->
+                    var entry = zis.nextZipEntry
+                    while (entry != null) {
+                        val newFile = File(destDir, entry.name)
+                        if (entry.isDirectory) {
+                            newFile.mkdirs()
+                        } else {
+                            newFile.parentFile?.mkdirs()
+                            newFile.outputStream().use { zis.copyTo(it) }
                         }
+                        entry = zis.nextZipEntry
                     }
-                    entry = zis.nextEntry
+                }
+            } else if (pathLower.contains(".tar")) {
+                TarArchiveInputStream(isIn).use { tais ->
+                    var entry = tais.nextTarEntry
+                    while (entry != null) {
+                        val newFile = File(destDir, entry.name)
+                        if (entry.isDirectory) {
+                            newFile.mkdirs()
+                        } else {
+                            newFile.parentFile?.mkdirs()
+                            newFile.outputStream().use { tais.copyTo(it) }
+                        }
+                        entry = tais.nextTarEntry
+                    }
                 }
             }
             true

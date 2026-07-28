@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
 import com.example.data.local.BookmarkEntity
 import com.example.data.local.TrashEntity
+import com.example.data.model.ArchiveOptions
 import com.example.data.model.FileCategory
 import com.example.data.model.FileItem
 import com.example.data.model.StorageStats
@@ -431,16 +432,16 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
         navigateTo(repository.systemRootPath)
     }
 
-    fun compressSelectedToArchive(fileName: String, is7z: Boolean = false) {
+    fun compressSelectedToArchive(fileName: String, options: ArchiveOptions) {
         val state = _uiState.value
         val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return
-        val ext = if (is7z) ".7z" else ".zip"
+        val ext = options.format.extension
         val cleanName = if (fileName.endsWith(ext, ignoreCase = true)) fileName else "$fileName$ext"
         val destPath = File(activeTab.currentPath, cleanName).absolutePath
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val ok = repository.zipFiles(state.selectedFilePaths.toList(), destPath)
+            val ok = repository.createArchive(state.selectedFilePaths.toList(), destPath, options)
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -453,11 +454,11 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun compressSelectedToZip(zipFileName: String) {
-        compressSelectedToArchive(zipFileName, is7z = false)
+        compressSelectedToArchive(zipFileName, ArchiveOptions())
     }
 
     fun compressSelectedTo7z(archiveFileName: String) {
-        compressSelectedToArchive(archiveFileName, is7z = true)
+        compressSelectedToArchive(archiveFileName, ArchiveOptions(com.example.data.model.ArchiveFormat.SEVEN_Z))
     }
 
     fun inspectZipArchive(fileItem: FileItem) {

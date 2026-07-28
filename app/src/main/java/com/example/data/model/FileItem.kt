@@ -47,7 +47,7 @@ data class FileItem(
             if (isDirectory) return FileCategory.FOLDER
             val ext = name.substringAfterLast('.', "").lowercase()
             return when (ext) {
-                "jpg", "jpeg", "png", "webp", "gif", "svg", "bmp" -> FileCategory.IMAGE
+                "jpg", "jpeg", "png", "webp", "gif", "svg", "bmp", "dng", "nef", "cr2", "arw" -> FileCategory.IMAGE
                 "mp4", "mkv", "webm", "avi", "mov", "3gp" -> FileCategory.VIDEO
                 "mp3", "wav", "flac", "aac", "m4a", "ogg" -> FileCategory.AUDIO
                 "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt" -> FileCategory.DOCUMENT

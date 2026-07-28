@@ -18,6 +18,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.lazy.LazyColumn
@@ -114,9 +116,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import com.example.data.model.ArchiveFormat
+import com.example.data.model.ArchiveOptions
+import com.example.data.model.CompressionLevel
 import com.example.data.model.FileCategory
 import com.example.data.model.FileItem
 import com.example.ui.components.AudioPlayerBar
@@ -172,7 +179,6 @@ fun ExplorerMainScreen(
     var renameInput by remember { mutableStateOf("") }
 
     var showZipDialog by remember { mutableStateOf(false) }
-    var zipNameInput by remember { mutableStateOf("") }
 
     var showSortDialog by remember { mutableStateOf(false) }
     var openWithFile by remember { mutableStateOf<FileItem?>(null) }
@@ -1017,40 +1023,67 @@ fun ExplorerMainScreen(
     }
 
     if (showZipDialog) {
-        var is7zFormat by remember { mutableStateOf(false) }
+        var archiveName by remember { mutableStateOf("") }
+        var selectedFormat by remember { mutableStateOf(ArchiveFormat.ZIP) }
+        var selectedLevel by remember { mutableStateOf(CompressionLevel.NORMAL) }
+
         AlertDialog(
             onDismissRequest = { showZipDialog = false },
-            title = { Text("Compress Selected Items") },
+            title = { Text("Compress Selected Items", fontWeight = FontWeight.Bold) },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
-                        value = zipNameInput,
-                        onValueChange = { zipNameInput = it },
-                        label = { Text("Archive Name (e.g. archive)") },
+                        value = archiveName,
+                        onValueChange = { archiveName = it },
+                        label = { Text("Archive Name") },
+                        suffix = { Text(selectedFormat.extension) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().testTag("input_archive_name")
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = "Select Format:", style = MaterialTheme.typography.bodyMedium)
+
+                    Text(text = "Select Format:", style = MaterialTheme.typography.labelLarge)
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        TextButton(
-                            onClick = { is7zFormat = false },
-                            colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                                containerColor = if (!is7zFormat) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-                            )
-                        ) {
-                            Text("ZIP (.zip)")
+                        ArchiveFormat.entries.forEach { format ->
+                            Surface(
+                                onClick = { selectedFormat = format },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (selectedFormat == format) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = if (selectedFormat == format) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+                            ) {
+                                Text(
+                                    text = format.label,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (selectedFormat == format) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                        TextButton(
-                            onClick = { is7zFormat = true },
-                            colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                                containerColor = if (is7zFormat) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-                            )
-                        ) {
-                            Text("7-Zip (.7z)")
+                    }
+
+                    Text(text = "Compression Level:", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CompressionLevel.entries.forEach { level ->
+                            Surface(
+                                onClick = { selectedLevel = level },
+                                shape = CircleShape,
+                                color = if (selectedLevel == level) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.weight(1f),
+                                border = if (selectedLevel == level) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary) else null
+                            ) {
+                                Text(
+                                    text = level.label,
+                                    modifier = Modifier.padding(vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    textAlign = TextAlign.Center,
+                                    color = if (selectedLevel == level) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -1058,13 +1091,11 @@ fun ExplorerMainScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (zipNameInput.isNotBlank()) {
-                            if (is7zFormat) {
-                                viewModel.compressSelectedTo7z(zipNameInput)
-                            } else {
-                                viewModel.compressSelectedToZip(zipNameInput)
-                            }
-                            zipNameInput = ""
+                        if (archiveName.isNotBlank()) {
+                            viewModel.compressSelectedToArchive(
+                                archiveName,
+                                ArchiveOptions(selectedFormat, selectedLevel)
+                            )
                             showZipDialog = false
                         }
                     },
@@ -1150,6 +1181,7 @@ private fun DirectoryContentView(
     viewModel: ExplorerViewModel,
     onOpenWithFile: (FileItem) -> Unit
 ) {
+    val context = LocalContext.current
     if (files.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -1193,7 +1225,7 @@ private fun DirectoryContentView(
                                 if (openWithPromptOnTap) {
                                     onOpenWithFile(item)
                                 } else {
-                                    handleFileOpen(item, viewModel)
+                                    handleFileOpen(context, item, viewModel)
                                 }
                             }
                         },
@@ -1231,7 +1263,7 @@ private fun DirectoryContentView(
                                 if (openWithPromptOnTap) {
                                     onOpenWithFile(item)
                                 } else {
-                                    handleFileOpen(item, viewModel)
+                                    handleFileOpen(context, item, viewModel)
                                 }
                             }
                         },
@@ -1325,22 +1357,7 @@ private fun OpenWithDialog(
                     subtitle = "Open with external Android application",
                     onClick = {
                         onDismiss()
-                        try {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                val javaFile = java.io.File(file.path)
-                                val uri = androidx.core.content.FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.fileprovider",
-                                    javaFile
-                                )
-                                val mime = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "*/*"
-                                setDataAndType(uri, mime)
-                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(android.content.Intent.createChooser(intent, "Open with"))
-                        } catch (e: Exception) {
-                            viewModel.showNotice("No external app available for ${file.name}")
-                        }
+                        openWithSystemDefault(context, file, viewModel)
                     }
                 )
             }
@@ -1392,13 +1409,37 @@ private fun OpenWithOptionRow(
     }
 }
 
-private fun handleFileOpen(item: FileItem, viewModel: ExplorerViewModel) {
+private fun openWithSystemDefault(context: Context, file: FileItem, viewModel: ExplorerViewModel) {
+    try {
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+            val javaFile = java.io.File(file.path)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                javaFile
+            )
+            val mime = when (file.extension.lowercase()) {
+                "apk" -> "application/vnd.android.package-archive"
+                "dng" -> "image/x-adobe-dng"
+                else -> android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "*/*"
+            }
+            setDataAndType(uri, mime)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(android.content.Intent.createChooser(intent, "Open with"))
+    } catch (e: Exception) {
+        viewModel.showNotice("No external app available for ${file.name}")
+    }
+}
+
+private fun handleFileOpen(context: Context, item: FileItem, viewModel: ExplorerViewModel) {
     when (item.category) {
+        FileCategory.APK -> openWithSystemDefault(context, item, viewModel)
         FileCategory.CODE, FileCategory.DOCUMENT -> viewModel.openTextEditor(item)
         FileCategory.IMAGE -> viewModel.openImageViewer(item)
         FileCategory.AUDIO -> viewModel.openAudioPlayer(item)
         FileCategory.ARCHIVE -> viewModel.inspectZipArchive(item)
-        else -> viewModel.inspectFileDetails(item)
+        else -> openWithSystemDefault(context, item, viewModel)
     }
 }
 
