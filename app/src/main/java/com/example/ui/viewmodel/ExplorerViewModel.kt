@@ -259,6 +259,13 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
         return false
     }
 
+    fun canNavigateBack(): Boolean {
+        val activeTab = _uiState.value.tabs.getOrNull(_uiState.value.activeTabIndex) ?: return false
+        if (activeTab.historyIndex > 0) return true
+        val parentFile = File(activeTab.currentPath).parentFile
+        return parentFile != null && parentFile.canRead() && activeTab.currentPath != "/"
+    }
+
     fun addNewTab(path: String? = null) {
         val initial = path ?: repository.rootStoragePath
         val newTab = TabItem(

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -187,6 +188,21 @@ fun ExplorerMainScreen(
     var isSearchVisible by remember { mutableStateOf(false) }
     var showAddMenu by remember { mutableStateOf(false) }
     var showInstallPermissionDialog by remember { mutableStateOf(false) }
+
+    BackHandler(
+        enabled = drawerState.isOpen || isSearchVisible || showAddMenu || state.currentScreen != NavigationScreen.EXPLORER || viewModel.canNavigateBack()
+    ) {
+        when {
+            drawerState.isOpen -> scope.launch { drawerState.close() }
+            showAddMenu -> showAddMenu = false
+            isSearchVisible -> {
+                isSearchVisible = false
+                viewModel.setSearchQuery("")
+            }
+            state.currentScreen != NavigationScreen.EXPLORER -> viewModel.switchScreen(NavigationScreen.EXPLORER)
+            else -> viewModel.navigateBack()
+        }
+    }
 
     LaunchedEffect(state.userNotice) {
         state.userNotice?.let { notice ->
