@@ -61,7 +61,7 @@ fun ImageViewerDialog(
 
             // Top Bar
             Surface(
-                color = Color.Black.copy(alpha = 0.7f),
+                color = Color.Black.copy(alpha = 0.5f),
                 modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
             ) {
                 Row(

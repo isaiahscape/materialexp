@@ -90,7 +90,7 @@ fun BreadcrumbBar(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = Color.Black,
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp
     ) {
         Row(
@@ -106,7 +106,7 @@ fun BreadcrumbBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Navigate Back",
-                    tint = Color.White
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -124,7 +124,7 @@ fun BreadcrumbBar(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(
-                                if (isLast) Color(0xFF262626)
+                                if (isLast) MaterialTheme.colorScheme.primaryContainer
                                 else Color.Transparent
                             )
                             .clickable { onNavigateToSegment(path) }
@@ -136,7 +136,7 @@ fun BreadcrumbBar(
                                 fontWeight = if (isLast) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 13.sp
                             ),
-                            color = Color.White
+                            color = if (isLast) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -144,7 +144,7 @@ fun BreadcrumbBar(
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = Color.Gray,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.size(16.dp).padding(horizontal = 2.dp)
                         )
                     }
@@ -153,14 +153,14 @@ fun BreadcrumbBar(
 
             // Quick Actions
             IconButton(onClick = onOpenSearch, modifier = Modifier.testTag("btn_search")) {
-                Icon(Icons.Default.Search, contentDescription = "Search Files", tint = Color.White)
+                Icon(Icons.Default.Search, contentDescription = "Search Files", tint = MaterialTheme.colorScheme.onSurface)
             }
 
             IconButton(onClick = onToggleBookmark, modifier = Modifier.testTag("btn_bookmark")) {
                 Icon(
                     imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                     contentDescription = "Bookmark",
-                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else Color.White
+                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -168,7 +168,7 @@ fun BreadcrumbBar(
                 Icon(
                     imageVector = Icons.Default.Splitscreen,
                     contentDescription = "Toggle Dual Pane",
-                    tint = if (isDualPane) MaterialTheme.colorScheme.primary else Color.White
+                    tint = if (isDualPane) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
 

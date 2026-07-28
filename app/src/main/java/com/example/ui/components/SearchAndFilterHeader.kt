@@ -65,7 +65,7 @@ fun SearchAndFilterHeader(
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = androidx.compose.ui.graphics.Color.Black,
+                color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp
             ) {
                 OutlinedTextField(
@@ -75,27 +75,27 @@ fun SearchAndFilterHeader(
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                         .testTag("input_search"),
-                    placeholder = { Text("Search files by name...", color = Color.Gray) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.White) },
+                    placeholder = { Text("Search files by name...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { onQueryChange("") }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear Search", tint = Color.White)
+                                Icon(Icons.Default.Close, contentDescription = "Clear Search", tint = MaterialTheme.colorScheme.onSurface)
                             }
                         } else {
                             IconButton(onClick = onCloseSearch) {
-                                Icon(Icons.Default.Close, contentDescription = "Close Search Bar", tint = Color.White)
+                                Icon(Icons.Default.Close, contentDescription = "Close Search Bar", tint = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF141414),
-                        unfocusedContainerColor = Color(0xFF141414),
-                        focusedIndicatorColor = Color.DarkGray,
-                        unfocusedIndicatorColor = Color.DarkGray
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        focusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant
                     ),
                     singleLine = true
                 )
@@ -106,7 +106,7 @@ fun SearchAndFilterHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.Black)
+                .background(MaterialTheme.colorScheme.surface)
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -119,7 +119,7 @@ fun SearchAndFilterHeader(
 
                 val pillBgColor by animateColorAsState(
                     targetValue = if (isSelected) MaterialTheme.colorScheme.primary
-                    else androidx.compose.ui.graphics.Color(0xFF141414),
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
                     label = "pillBg"
                 )

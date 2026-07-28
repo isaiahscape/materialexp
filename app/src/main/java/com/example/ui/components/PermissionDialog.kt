@@ -87,9 +87,6 @@ fun PermissionDialog(
             TextButton(onClick = { (context as? android.app.Activity)?.finish() }) {
                 Text("Exit App", color = MaterialTheme.colorScheme.error)
             }
-        },
-        containerColor = Color.Black,
-        titleContentColor = Color.White,
-        textContentColor = Color.LightGray
+        }
     )
 }

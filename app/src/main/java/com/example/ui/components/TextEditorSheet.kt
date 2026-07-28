@@ -145,7 +145,7 @@ fun TextEditorSheet(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Color(0xFF1E293B))
+                                    .background(MaterialTheme.colorScheme.surface)
                                     .horizontalScroll(rememberScrollState())
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -154,7 +154,7 @@ fun TextEditorSheet(
                                     Surface(
                                         onClick = { onContentChange(content + symbol) },
                                         shape = RoundedCornerShape(4.dp),
-                                        color = Color(0xFF334155),
+                                        color = MaterialTheme.colorScheme.primaryContainer,
                                         modifier = Modifier.padding(horizontal = 3.dp, vertical = 2.dp)
                                     ) {
                                         Text(
@@ -162,7 +162,7 @@ fun TextEditorSheet(
                                             style = MaterialTheme.typography.bodySmall.copy(
                                                 fontFamily = FontFamily.Monospace,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFFF8FAFC)
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
                                             ),
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                         )
@@ -191,7 +191,7 @@ fun TextEditorSheet(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .background(Color(0xFF0F172A))
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 if (selectedTab == 0) {
                     Row(
@@ -205,10 +205,10 @@ fun TextEditorSheet(
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 13.sp,
-                                color = Color(0xFF64748B)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             ),
                             modifier = Modifier
-                                .background(Color(0xFF1E293B))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                                 .padding(horizontal = 10.dp, vertical = 16.dp)
                                 .verticalScroll(rememberScrollState())
                         )
@@ -223,11 +223,11 @@ fun TextEditorSheet(
                             textStyle = MaterialTheme.typography.bodyMedium.copy(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 13.sp,
-                                color = Color(0xFFF8FAFC)
+                                color = MaterialTheme.colorScheme.onSurface
                             ),
                             colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF0F172A),
-                                unfocusedContainerColor = Color(0xFF0F172A),
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent
                             )

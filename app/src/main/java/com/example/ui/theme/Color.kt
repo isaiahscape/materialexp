@@ -33,9 +33,9 @@ val OnSecondaryContainerDark = Color(0xFFFFFFFF)
 
 val BackgroundDark = Color(0xFF000000)
 val OnBackgroundDark = Color(0xFFFFFFFF)
-val SurfaceDark = Color(0xFF121212)
+val SurfaceDark = Color(0xFF000000)
 val OnSurfaceDark = Color(0xFFFFFFFF)
-val SurfaceVariantDark = Color(0xFF1E1E1E)
+val SurfaceVariantDark = Color(0xFF1A1A1A)
 val OnSurfaceVariantDark = Color(0xFFA3A3A3)
 
 // Monochrome Category Accent Shades

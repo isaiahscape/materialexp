@@ -42,7 +42,7 @@ fun TabBar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = Color.Black,
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp
     ) {
         Row(
@@ -65,8 +65,8 @@ fun TabBar(
                             .testTag("tab_item_$index")
                             .clip(RoundedCornerShape(8.dp))
                             .background(
-                                if (isActive) Color(0xFF262626)
-                                else Color(0xFF141414)
+                                if (isActive) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             )
                             .clickable { onSelectTab(index) }
                             .padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
@@ -75,7 +75,7 @@ fun TabBar(
                         Icon(
                             imageVector = Icons.Default.Folder,
                             contentDescription = null,
-                            tint = if (isActive) Color.White else Color.Gray,
+                            tint = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
 
@@ -87,7 +87,7 @@ fun TabBar(
                                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 12.sp
                             ),
-                            color = if (isActive) Color.White else Color.Gray,
+                            color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 6.dp)
                         )
 
@@ -95,7 +95,7 @@ fun TabBar(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Close Tab",
-                                tint = Color.Gray,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier
                                     .size(16.dp)
                                     .clip(RoundedCornerShape(4.dp))
@@ -116,7 +116,7 @@ fun TabBar(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "New Tab",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(20.dp)
                 )
             }

@@ -87,9 +87,6 @@ fun InstallPermissionDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        },
-        containerColor = Color.Black,
-        titleContentColor = Color.White,
-        textContentColor = Color.LightGray
+        }
     )
 }
