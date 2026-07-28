@@ -133,6 +133,7 @@ import com.example.ui.components.FileDetailsDialog
 import com.example.ui.components.FileGridItem
 import com.example.ui.components.FileListItem
 import com.example.ui.components.ImageViewerDialog
+import com.example.ui.components.InstallPermissionDialog
 import com.example.ui.components.PermissionDialog
 import com.example.ui.components.SearchAndFilterHeader
 import com.example.ui.components.TabBar
@@ -185,6 +186,7 @@ fun ExplorerMainScreen(
 
     var isSearchVisible by remember { mutableStateOf(false) }
     var showAddMenu by remember { mutableStateOf(false) }
+    var showInstallPermissionDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.userNotice) {
         state.userNotice?.let { notice ->
@@ -417,7 +419,8 @@ fun ExplorerMainScreen(
                                                 viewMode = state.viewMode,
                                                 openWithPromptOnTap = state.openWithPromptOnTap,
                                                 viewModel = viewModel,
-                                                onOpenWithFile = { openWithFile = it }
+                                                onOpenWithFile = { openWithFile = it },
+                                                onRequireInstallPermission = { showInstallPermissionDialog = true }
                                             )
                                         }
                                         Spacer(
@@ -433,7 +436,8 @@ fun ExplorerMainScreen(
                                                 viewMode = state.viewMode,
                                                 openWithPromptOnTap = state.openWithPromptOnTap,
                                                 viewModel = viewModel,
-                                                onOpenWithFile = { openWithFile = it }
+                                                onOpenWithFile = { openWithFile = it },
+                                                onRequireInstallPermission = { showInstallPermissionDialog = true }
                                             )
                                         }
                                     }
@@ -445,7 +449,8 @@ fun ExplorerMainScreen(
                                             viewMode = state.viewMode,
                                             openWithPromptOnTap = state.openWithPromptOnTap,
                                             viewModel = viewModel,
-                                            onOpenWithFile = { openWithFile = it }
+                                            onOpenWithFile = { openWithFile = it },
+                                            onRequireInstallPermission = { showInstallPermissionDialog = true }
                                         )
                                     }
                                 }
@@ -1163,12 +1168,17 @@ fun ExplorerMainScreen(
         OpenWithDialog(
             file = file,
             onDismiss = { openWithFile = null },
-            viewModel = viewModel
+            viewModel = viewModel,
+            onRequireInstallPermission = { showInstallPermissionDialog = true }
         )
     }
 
     if (!state.isStoragePermissionGranted) {
         PermissionDialog(onDismiss = { /* Action handled inside */ })
+    }
+
+    if (showInstallPermissionDialog) {
+        InstallPermissionDialog(onDismiss = { showInstallPermissionDialog = false })
     }
 }
 
@@ -1179,7 +1189,8 @@ private fun DirectoryContentView(
     viewMode: ViewMode,
     openWithPromptOnTap: Boolean,
     viewModel: ExplorerViewModel,
-    onOpenWithFile: (FileItem) -> Unit
+    onOpenWithFile: (FileItem) -> Unit,
+    onRequireInstallPermission: () -> Unit
 ) {
     val context = LocalContext.current
     if (files.isEmpty()) {
@@ -1225,7 +1236,7 @@ private fun DirectoryContentView(
                                 if (openWithPromptOnTap) {
                                     onOpenWithFile(item)
                                 } else {
-                                    handleFileOpen(context, item, viewModel)
+                                    handleFileOpen(context, item, viewModel, onRequireInstallPermission)
                                 }
                             }
                         },
@@ -1263,7 +1274,7 @@ private fun DirectoryContentView(
                                 if (openWithPromptOnTap) {
                                     onOpenWithFile(item)
                                 } else {
-                                    handleFileOpen(context, item, viewModel)
+                                    handleFileOpen(context, item, viewModel, onRequireInstallPermission)
                                 }
                             }
                         },
@@ -1281,7 +1292,8 @@ private fun DirectoryContentView(
 private fun OpenWithDialog(
     file: FileItem,
     onDismiss: () -> Unit,
-    viewModel: ExplorerViewModel
+    viewModel: ExplorerViewModel,
+    onRequireInstallPermission: () -> Unit
 ) {
     val context = LocalContext.current
     AlertDialog(
@@ -1357,7 +1369,7 @@ private fun OpenWithDialog(
                     subtitle = "Open with external Android application",
                     onClick = {
                         onDismiss()
-                        openWithSystemDefault(context, file, viewModel)
+                        openWithSystemDefault(context, file, viewModel, onRequireInstallPermission)
                     }
                 )
             }
@@ -1409,7 +1421,15 @@ private fun OpenWithOptionRow(
     }
 }
 
-private fun openWithSystemDefault(context: Context, file: FileItem, viewModel: ExplorerViewModel) {
+private fun openWithSystemDefault(context: Context, file: FileItem, viewModel: ExplorerViewModel, onRequireInstallPermission: () -> Unit) {
+    if (file.extension.lowercase() == "apk") {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                onRequireInstallPermission()
+                return
+            }
+        }
+    }
     try {
         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
             val javaFile = java.io.File(file.path)
@@ -1432,14 +1452,14 @@ private fun openWithSystemDefault(context: Context, file: FileItem, viewModel: E
     }
 }
 
-private fun handleFileOpen(context: Context, item: FileItem, viewModel: ExplorerViewModel) {
+private fun handleFileOpen(context: Context, item: FileItem, viewModel: ExplorerViewModel, onRequireInstallPermission: () -> Unit) {
     when (item.category) {
-        FileCategory.APK -> openWithSystemDefault(context, item, viewModel)
+        FileCategory.APK -> openWithSystemDefault(context, item, viewModel, onRequireInstallPermission)
         FileCategory.CODE, FileCategory.DOCUMENT -> viewModel.openTextEditor(item)
         FileCategory.IMAGE -> viewModel.openImageViewer(item)
         FileCategory.AUDIO -> viewModel.openAudioPlayer(item)
         FileCategory.ARCHIVE -> viewModel.inspectZipArchive(item)
-        else -> openWithSystemDefault(context, item, viewModel)
+        else -> openWithSystemDefault(context, item, viewModel, onRequireInstallPermission)
     }
 }
 
