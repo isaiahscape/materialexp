@@ -24,6 +24,7 @@ import java.util.UUID
 enum class ViewMode { DETAILED_LIST, COMPACT_LIST, GRID_2, GRID_3 }
 enum class SortMode { NAME_ASC, NAME_DESC, SIZE_ASC, SIZE_DESC, DATE_ASC, DATE_DESC, TYPE }
 enum class NavigationScreen { EXPLORER, STORAGE_ANALYZER, TRASH_BIN, BOOKMARKS, SETTINGS }
+enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
 data class ExplorerUiState(
     val tabs: List<TabItem> = emptyList(),
@@ -64,7 +65,8 @@ data class ExplorerUiState(
     val userNotice: String? = null,
     val rootStatus: String = "Checking...",
     val storageDrives: List<FileRepository.StorageDrive> = emptyList(),
-    val isStoragePermissionGranted: Boolean = true
+    val isStoragePermissionGranted: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM
 )
 
 class ExplorerViewModel(application: Application) : AndroidViewModel(application) {
@@ -635,6 +637,10 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     fun toggleOpenWithPromptOnTap() {
         val newPrompt = !_uiState.value.openWithPromptOnTap
         _uiState.update { it.copy(openWithPromptOnTap = newPrompt) }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        _uiState.update { it.copy(themeMode = mode) }
     }
 
     fun switchScreen(screen: NavigationScreen) {

@@ -494,11 +494,13 @@ fun ExplorerMainScreen(
                                 showHiddenFiles = state.showHiddenFiles,
                                 isDualPaneEnabled = state.isDualPaneEnabled,
                                 openWithPromptOnTap = state.openWithPromptOnTap,
+                                themeMode = state.themeMode,
                                 viewMode = state.viewMode,
                                 rootStatus = state.rootStatus,
                                 onToggleShowHidden = { viewModel.toggleShowHiddenFiles() },
                                 onToggleDualPane = { viewModel.toggleDualPane() },
                                 onToggleOpenWithPrompt = { viewModel.toggleOpenWithPromptOnTap() },
+                                onSetThemeMode = { viewModel.setThemeMode(it) },
                                 onSelectViewMode = { viewModel.setViewMode(it) },
                                 onTestRoot = { viewModel.runRootTestCommand() }
                             )

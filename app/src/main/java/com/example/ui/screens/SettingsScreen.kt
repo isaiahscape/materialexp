@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,16 +21,22 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.viewmodel.ThemeMode
 import com.example.ui.viewmodel.ViewMode
 
 @Composable
@@ -37,11 +44,13 @@ fun SettingsScreen(
     showHiddenFiles: Boolean,
     isDualPaneEnabled: Boolean,
     openWithPromptOnTap: Boolean = true,
+    themeMode: ThemeMode,
     viewMode: ViewMode,
     rootStatus: String = "Not Rooted",
     onToggleShowHidden: () -> Unit,
     onToggleDualPane: () -> Unit,
     onToggleOpenWithPrompt: () -> Unit = {},
+    onSetThemeMode: (ThemeMode) -> Unit,
     onSelectViewMode: (ViewMode) -> Unit,
     onTestRoot: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -61,6 +70,52 @@ fun SettingsScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Appearance",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    text = "Switch between light and dark themes",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ThemeOptionPill(
+                        label = "Light",
+                        isSelected = themeMode == ThemeMode.LIGHT,
+                        onClick = { onSetThemeMode(ThemeMode.LIGHT) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ThemeOptionPill(
+                        label = "Dark",
+                        isSelected = themeMode == ThemeMode.DARK,
+                        onClick = { onSetThemeMode(ThemeMode.DARK) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ThemeOptionPill(
+                        label = "Auto",
+                        isSelected = themeMode == ThemeMode.SYSTEM,
+                        onClick = { onSetThemeMode(ThemeMode.SYSTEM) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -109,6 +164,52 @@ fun SettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
+                    text = "Appearance",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    text = "Switch between light and dark themes",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ThemeOptionPill(
+                        label = "Light",
+                        isSelected = themeMode == ThemeMode.LIGHT,
+                        onClick = { onSetThemeMode(ThemeMode.LIGHT) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ThemeOptionPill(
+                        label = "Dark",
+                        isSelected = themeMode == ThemeMode.DARK,
+                        onClick = { onSetThemeMode(ThemeMode.DARK) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ThemeOptionPill(
+                        label = "Auto",
+                        isSelected = themeMode == ThemeMode.SYSTEM,
+                        onClick = { onSetThemeMode(ThemeMode.SYSTEM) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
                     text = "Root & Superuser Modding",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
@@ -142,6 +243,52 @@ fun SettingsScreen(
                     ) {
                         Text("Get root access")
                     }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Appearance",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    text = "Switch between light and dark themes",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ThemeOptionPill(
+                        label = "Light",
+                        isSelected = themeMode == ThemeMode.LIGHT,
+                        onClick = { onSetThemeMode(ThemeMode.LIGHT) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ThemeOptionPill(
+                        label = "Dark",
+                        isSelected = themeMode == ThemeMode.DARK,
+                        onClick = { onSetThemeMode(ThemeMode.DARK) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ThemeOptionPill(
+                        label = "Auto",
+                        isSelected = themeMode == ThemeMode.SYSTEM,
+                        onClick = { onSetThemeMode(ThemeMode.SYSTEM) },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
@@ -202,6 +349,30 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ThemeOptionPill(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = modifier
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(vertical = 8.dp),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium),
+            textAlign = TextAlign.Center,
+            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
