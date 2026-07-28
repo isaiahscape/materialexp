@@ -3,7 +3,7 @@ package com.example.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.audio.VlcPlayerManager
+import com.example.audio.SystemAudioPlayer
 import com.example.data.local.AppDatabase
 import com.example.data.local.BookmarkEntity
 import com.example.data.local.TrashEntity
@@ -80,7 +80,7 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     private val _uiState = MutableStateFlow(ExplorerUiState())
     val uiState: StateFlow<ExplorerUiState> = _uiState.asStateFlow()
 
-    private val vlcPlayerManager = VlcPlayerManager(application)
+    private val audioPlayer = SystemAudioPlayer()
 
     init {
         checkStoragePermission()
@@ -110,7 +110,7 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     private fun observeAudioPlayback() {
         viewModelScope.launch {
-            vlcPlayerManager.playbackState.collect { state ->
+            audioPlayer.playbackState.collect { state ->
                 _uiState.update {
                     it.copy(
                         isAudioPlaying = state.isPlaying,
@@ -585,21 +585,21 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     fun openAudioPlayer(fileItem: FileItem) {
         _uiState.update { it.copy(activeAudioFile = fileItem) }
-        vlcPlayerManager.play(fileItem.path)
+        audioPlayer.play(fileItem.path)
     }
 
     fun toggleAudioPlayback() {
-        vlcPlayerManager.togglePlay()
+        audioPlayer.togglePlay()
     }
 
     fun closeAudioPlayer() {
-        vlcPlayerManager.stop()
+        audioPlayer.stop()
         _uiState.update { it.copy(activeAudioFile = null) }
     }
 
     override fun onCleared() {
         super.onCleared()
-        vlcPlayerManager.release()
+        audioPlayer.release()
     }
 
     fun inspectFileDetails(fileItem: FileItem) {
