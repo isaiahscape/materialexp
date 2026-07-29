@@ -36,6 +36,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.FileItem
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import com.example.ui.viewmodel.ExplorerViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -44,8 +47,20 @@ fun FileGridItem(
     isSelected: Boolean,
     onItemClick: () -> Unit,
     onItemLongClick: () -> Unit,
+    viewModel: ExplorerViewModel? = null,
     modifier: Modifier = Modifier
 ) {
+    val itemModifier = if (viewModel != null) {
+        Modifier.pointerInput(file) {
+            detectDragGesturesAfterLongPress(
+                onDragStart = { viewModel.startDragging(file) },
+                onDragEnd = { viewModel.stopDragging() },
+                onDragCancel = { viewModel.stopDragging() },
+                onDrag = { _, _ -> }
+            )
+        }
+    } else Modifier
+
     val (badgeIcon, badgeColor) = getCategoryVisuals(file.category)
 
     val scale by animateFloatAsState(
@@ -62,6 +77,7 @@ fun FileGridItem(
             .fillMaxWidth()
             .testTag("file_grid_${file.name}")
             .scale(scale)
+            .then(itemModifier)
             .combinedClickable(
                 onClick = onItemClick,
                 onLongClick = onItemLongClick

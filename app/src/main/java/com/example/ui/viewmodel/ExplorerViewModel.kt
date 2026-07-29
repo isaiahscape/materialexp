@@ -26,6 +26,7 @@ enum class ViewMode { DETAILED_LIST, COMPACT_LIST, GRID_2, GRID_3 }
 enum class SortMode { NAME_ASC, NAME_DESC, SIZE_ASC, SIZE_DESC, DATE_ASC, DATE_DESC, TYPE }
 enum class NavigationScreen { HOME, EXPLORER, STORAGE_ANALYZER, TRASH_BIN, BOOKMARKS, SETTINGS }
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
+enum class PaneType { PRIMARY, SECONDARY }
 
 data class ExplorerUiState(
     val tabs: List<TabItem> = emptyList(),
@@ -33,6 +34,9 @@ data class ExplorerUiState(
     val files: List<FileItem> = emptyList(),
     val secondPaneFiles: List<FileItem> = emptyList(),
     val secondPanePath: String = "",
+    val secondPaneHistory: List<String> = emptyList(),
+    val secondPaneHistoryIndex: Int = 0,
+    val focusedPane: PaneType = PaneType.PRIMARY,
     val isLoading: Boolean = false,
     val selectedFilePaths: Set<String> = emptySet(),
     val clipboardPaths: List<String> = emptyList(),
@@ -82,6 +86,16 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     private val audioPlayer = SystemAudioPlayer()
 
+    val draggedFile = MutableStateFlow<FileItem?>(null)
+
+    fun startDragging(file: FileItem) {
+        draggedFile.value = file
+    }
+
+    fun stopDragging() {
+        draggedFile.value = null
+    }
+
     init {
         checkStoragePermission()
         val initialPath = repository.rootStoragePath
@@ -96,7 +110,9 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
             it.copy(
                 tabs = listOf(defaultTab),
                 activeTabIndex = 0,
-                secondPanePath = secondPath
+                secondPanePath = secondPath,
+                secondPaneHistory = listOf(secondPath),
+                secondPaneHistoryIndex = 0
             )
         }
 
@@ -229,65 +245,135 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun navigateTo(path: String) {
+    fun setFocusedPane(pane: PaneType) {
+        _uiState.update { it.copy(focusedPane = pane) }
+    }
+
+    fun navigateTo(path: String, pane: PaneType? = null) {
         val state = _uiState.value
-        val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return
+        val targetPane = pane ?: state.focusedPane
 
-        if (activeTab.currentPath == path) return
+        if (targetPane == PaneType.PRIMARY) {
+            val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return
+            if (activeTab.currentPath == path) return
 
-        val updatedHistory = activeTab.history.take(activeTab.historyIndex + 1) + path
-        val updatedTab = activeTab.copy(
-            title = File(path).name.ifEmpty { "Storage" },
-            currentPath = path,
-            history = updatedHistory,
-            historyIndex = updatedHistory.lastIndex
-        )
-
-        val updatedTabs = state.tabs.toMutableList().apply {
-            set(state.activeTabIndex, updatedTab)
-        }
-
-        _uiState.update {
-            it.copy(
-                tabs = updatedTabs,
-                selectedFilePaths = emptySet(),
-                searchQuery = ""
+            val updatedHistory = activeTab.history.take(activeTab.historyIndex + 1) + path
+            val updatedTab = activeTab.copy(
+                title = File(path).name.ifEmpty { "Storage" },
+                currentPath = path,
+                history = updatedHistory,
+                historyIndex = updatedHistory.lastIndex
             )
+
+            val updatedTabs = state.tabs.toMutableList().apply {
+                set(state.activeTabIndex, updatedTab)
+            }
+
+            _uiState.update {
+                it.copy(
+                    tabs = updatedTabs,
+                    selectedFilePaths = emptySet(),
+                    searchQuery = ""
+                )
+            }
+        } else {
+            if (state.secondPanePath == path) return
+            val updatedHistory = state.secondPaneHistory.take(state.secondPaneHistoryIndex + 1) + path
+            _uiState.update {
+                it.copy(
+                    secondPanePath = path,
+                    secondPaneHistory = updatedHistory,
+                    secondPaneHistoryIndex = updatedHistory.lastIndex,
+                    selectedFilePaths = emptySet(),
+                    searchQuery = ""
+                )
+            }
         }
         loadCurrentDirectory()
     }
 
     fun navigateBack(): Boolean {
         val state = _uiState.value
-        val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return false
-
-        if (activeTab.historyIndex > 0) {
-            val newIdx = activeTab.historyIndex - 1
-            val prevPath = activeTab.history[newIdx]
-            val updatedTab = activeTab.copy(
-                currentPath = prevPath,
-                historyIndex = newIdx,
-                title = File(prevPath).name.ifEmpty { "Storage" }
-            )
-            val updatedTabs = state.tabs.toMutableList().apply { set(state.activeTabIndex, updatedTab) }
-            _uiState.update { it.copy(tabs = updatedTabs, selectedFilePaths = emptySet()) }
-            loadCurrentDirectory()
-            return true
-        } else {
-            val parentFile = File(activeTab.currentPath).parentFile
-            if (parentFile != null && parentFile.canRead()) {
-                navigateTo(parentFile.absolutePath)
+        if (state.focusedPane == PaneType.PRIMARY) {
+            val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return false
+            if (activeTab.historyIndex > 0) {
+                val newIdx = activeTab.historyIndex - 1
+                val prevPath = activeTab.history[newIdx]
+                val updatedTab = activeTab.copy(
+                    currentPath = prevPath,
+                    historyIndex = newIdx,
+                    title = File(prevPath).name.ifEmpty { "Storage" }
+                )
+                val updatedTabs = state.tabs.toMutableList().apply { set(state.activeTabIndex, updatedTab) }
+                _uiState.update { it.copy(tabs = updatedTabs, selectedFilePaths = emptySet()) }
+                loadCurrentDirectory()
                 return true
+            } else {
+                val parentFile = File(activeTab.currentPath).parentFile
+                if (parentFile != null && parentFile.canRead() && activeTab.currentPath != "/") {
+                    navigateTo(parentFile.absolutePath, PaneType.PRIMARY)
+                    return true
+                }
+            }
+        } else {
+            if (state.secondPaneHistoryIndex > 0) {
+                val newIdx = state.secondPaneHistoryIndex - 1
+                val prevPath = state.secondPaneHistory[newIdx]
+                _uiState.update {
+                    it.copy(
+                        secondPanePath = prevPath,
+                        secondPaneHistoryIndex = newIdx,
+                        selectedFilePaths = emptySet()
+                    )
+                }
+                loadCurrentDirectory()
+                return true
+            } else {
+                val parentFile = File(state.secondPanePath).parentFile
+                if (parentFile != null && parentFile.canRead() && state.secondPanePath != "/") {
+                    navigateTo(parentFile.absolutePath, PaneType.SECONDARY)
+                    return true
+                }
             }
         }
         return false
     }
 
     fun canNavigateBack(): Boolean {
-        val activeTab = _uiState.value.tabs.getOrNull(_uiState.value.activeTabIndex) ?: return false
-        if (activeTab.historyIndex > 0) return true
-        val parentFile = File(activeTab.currentPath).parentFile
-        return parentFile != null && parentFile.canRead() && activeTab.currentPath != "/"
+        val state = _uiState.value
+        if (state.focusedPane == PaneType.PRIMARY) {
+            val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return false
+            if (activeTab.historyIndex > 0) return true
+            val parentFile = File(activeTab.currentPath).parentFile
+            return parentFile != null && parentFile.canRead() && activeTab.currentPath != "/"
+        } else {
+            if (state.secondPaneHistoryIndex > 0) return true
+            val parentFile = File(state.secondPanePath).parentFile
+            return parentFile != null && parentFile.canRead() && state.secondPanePath != "/"
+        }
+    }
+
+    fun moveFileToPane(file: FileItem, targetPane: PaneType) {
+        val state = _uiState.value
+        val destPath = if (targetPane == PaneType.PRIMARY) {
+            state.tabs.getOrNull(state.activeTabIndex)?.currentPath ?: return
+        } else {
+            state.secondPanePath
+        }
+
+        if (destPath.isBlank() || destPath == File(file.path).parent) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val ok = repository.moveFile(file.path, destPath)
+            if (ok) {
+                _uiState.update { it.copy(userNotice = "Moved ${file.name} to target pane") }
+            } else {
+                _uiState.update { it.copy(userNotice = "Failed to move ${file.name}") }
+            }
+            _uiState.update { it.copy(isLoading = false) }
+            loadCurrentDirectory()
+        }
     }
 
     fun addNewTab(path: String? = null) {

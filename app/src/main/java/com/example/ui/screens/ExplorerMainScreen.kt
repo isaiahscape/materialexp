@@ -156,6 +156,7 @@ fun ExplorerMainScreen(
     viewModel: ExplorerViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+    val draggedFile by viewModel.draggedFile.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -449,13 +450,16 @@ fun ExplorerMainScreen(
                                 )
 
                                 BreadcrumbBar(
-                                    currentPath = currentPath,
+                                    currentPath = if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) currentPath else state.secondPanePath,
                                     rootStoragePath = viewModel.getApplicationsRootPath(),
-                                    isBookmarked = isBookmarked,
+                                    isBookmarked = if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) isBookmarked else state.bookmarks.any { it.path == state.secondPanePath },
                                     isDualPane = state.isDualPaneEnabled,
                                     onNavigateBack = { viewModel.navigateBack() },
                                     onNavigateToSegment = { viewModel.navigateTo(it) },
-                                    onToggleBookmark = { viewModel.toggleBookmark(currentPath, activeTab?.title ?: "Folder") },
+                                    onToggleBookmark = {
+                                        val path = if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) currentPath else state.secondPanePath
+                                        viewModel.toggleBookmark(path, java.io.File(path).name.ifEmpty { "Folder" })
+                                    },
                                     onToggleDualPane = { viewModel.toggleDualPane() },
                                     onOpenSearch = { isSearchVisible = !isSearchVisible }
                                 )
@@ -471,7 +475,14 @@ fun ExplorerMainScreen(
 
                                 if (state.isDualPaneEnabled) {
                                     Row(modifier = Modifier.weight(1f)) {
-                                        Box(modifier = Modifier.weight(1f)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .background(if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) MaterialTheme.colorScheme.primary.copy(alpha = 0.03f) else Color.Transparent)
+                                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                                                    viewModel.setFocusedPane(com.example.ui.viewmodel.PaneType.PRIMARY)
+                                                }
+                                        ) {
                                             DirectoryContentView(
                                                 files = state.files,
                                                 selectedPaths = state.selectedFilePaths,
@@ -481,6 +492,26 @@ fun ExplorerMainScreen(
                                                 onOpenWithFile = { openWithFile = it },
                                                 onRequireInstallPermission = { showInstallPermissionDialog = true }
                                             )
+                                            if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) {
+                                                Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.primary).align(Alignment.TopCenter))
+                                            }
+
+                                            // Drop Overlay for Primary Pane
+                                            if (draggedFile != null && !state.files.any { it.path == draggedFile!!.path }) {
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clickable { viewModel.moveFileToPane(draggedFile!!, com.example.ui.viewmodel.PaneType.PRIMARY) },
+                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center) {
+                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                            Icon(Icons.Default.ContentCopy, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
+                                                            Text("Drop to Move", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                         Spacer(
                                             modifier = Modifier
@@ -488,7 +519,14 @@ fun ExplorerMainScreen(
                                                 .fillMaxHeight()
                                                 .background(MaterialTheme.colorScheme.outlineVariant)
                                         )
-                                        Box(modifier = Modifier.weight(1f)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .background(if (state.focusedPane == com.example.ui.viewmodel.PaneType.SECONDARY) MaterialTheme.colorScheme.primary.copy(alpha = 0.03f) else Color.Transparent)
+                                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                                                    viewModel.setFocusedPane(com.example.ui.viewmodel.PaneType.SECONDARY)
+                                                }
+                                        ) {
                                             DirectoryContentView(
                                                 files = state.secondPaneFiles,
                                                 selectedPaths = emptySet(),
@@ -498,6 +536,26 @@ fun ExplorerMainScreen(
                                                 onOpenWithFile = { openWithFile = it },
                                                 onRequireInstallPermission = { showInstallPermissionDialog = true }
                                             )
+                                            if (state.focusedPane == com.example.ui.viewmodel.PaneType.SECONDARY) {
+                                                Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.primary).align(Alignment.TopCenter))
+                                            }
+
+                                            // Drop Overlay for Secondary Pane
+                                            if (draggedFile != null && !state.secondPaneFiles.any { it.path == draggedFile!!.path }) {
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clickable { viewModel.moveFileToPane(draggedFile!!, com.example.ui.viewmodel.PaneType.SECONDARY) },
+                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center) {
+                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                            Icon(Icons.Default.ContentCopy, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
+                                                            Text("Drop to Move", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 } else {
@@ -980,7 +1038,8 @@ private fun DirectoryContentView(
                         onRename = { viewModel.inspectFileDetails(item) },
                         onDelete = { viewModel.deleteItemToTrash(item) },
                         onDeletePermanently = { viewModel.deletePermanently(item) },
-                        onZip = { viewModel.toggleFileSelection(item.path) }
+                        onZip = { viewModel.toggleFileSelection(item.path) },
+                        viewModel = viewModel
                     )
                 }
             }
@@ -994,7 +1053,8 @@ private fun DirectoryContentView(
                         file = item,
                         isSelected = selectedPaths.contains(item.path),
                         onItemClick = { if (selectedPaths.isNotEmpty()) viewModel.toggleFileSelection(item.path) else if (item.isDirectory) viewModel.navigateTo(item.path) else if (openWithPromptOnTap) onOpenWithFile(item) else handleFileOpen(context, item, viewModel, onRequireInstallPermission) },
-                        onItemLongClick = { viewModel.toggleFileSelection(item.path) }
+                        onItemLongClick = { viewModel.toggleFileSelection(item.path) },
+                        viewModel = viewModel
                     )
                 }
             }

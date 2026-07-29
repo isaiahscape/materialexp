@@ -58,7 +58,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.FileCategory
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import com.example.ui.viewmodel.ExplorerViewModel
 import com.example.data.model.FileItem
 import com.example.ui.theme.ColorApk
 import com.example.ui.theme.ColorArchive
@@ -85,9 +87,21 @@ fun FileListItem(
     onDelete: () -> Unit,
     onDeletePermanently: () -> Unit,
     onZip: () -> Unit,
+    viewModel: ExplorerViewModel? = null,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    
+    val itemModifier = if (viewModel != null) {
+        Modifier.pointerInput(file) {
+            detectDragGesturesAfterLongPress(
+                onDragStart = { viewModel.startDragging(file) },
+                onDragEnd = { viewModel.stopDragging() },
+                onDragCancel = { viewModel.stopDragging() },
+                onDrag = { _, _ -> }
+            )
+        }
+    } else Modifier
 
     val (badgeIcon, badgeColor) = getCategoryVisuals(file.category)
 
@@ -105,6 +119,7 @@ fun FileListItem(
             .fillMaxWidth()
             .testTag("file_item_${file.name}")
             .scale(scale)
+            .then(itemModifier)
             .combinedClickable(
                 onClick = onItemClick,
                 onLongClick = onItemLongClick
