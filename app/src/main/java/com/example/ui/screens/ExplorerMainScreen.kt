@@ -490,7 +490,8 @@ fun ExplorerMainScreen(
                                                 openWithPromptOnTap = state.openWithPromptOnTap,
                                                 viewModel = viewModel,
                                                 onOpenWithFile = { openWithFile = it },
-                                                onRequireInstallPermission = { showInstallPermissionDialog = true }
+                                                onRequireInstallPermission = { showInstallPermissionDialog = true },
+                                                onRename = { showRenameDialog = it; renameInput = it.name }
                                             )
                                             if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) {
                                                 Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.primary).align(Alignment.TopCenter))
@@ -534,7 +535,8 @@ fun ExplorerMainScreen(
                                                 openWithPromptOnTap = state.openWithPromptOnTap,
                                                 viewModel = viewModel,
                                                 onOpenWithFile = { openWithFile = it },
-                                                onRequireInstallPermission = { showInstallPermissionDialog = true }
+                                                onRequireInstallPermission = { showInstallPermissionDialog = true },
+                                                onRename = { showRenameDialog = it; renameInput = it.name }
                                             )
                                             if (state.focusedPane == com.example.ui.viewmodel.PaneType.SECONDARY) {
                                                 Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.primary).align(Alignment.TopCenter))
@@ -567,7 +569,8 @@ fun ExplorerMainScreen(
                                             openWithPromptOnTap = state.openWithPromptOnTap,
                                             viewModel = viewModel,
                                             onOpenWithFile = { openWithFile = it },
-                                            onRequireInstallPermission = { showInstallPermissionDialog = true }
+                                            onRequireInstallPermission = { showInstallPermissionDialog = true },
+                                            onRename = { showRenameDialog = it; renameInput = it.name }
                                         )
                                     }
                                 }
@@ -1011,7 +1014,8 @@ private fun DirectoryContentView(
     openWithPromptOnTap: Boolean,
     viewModel: ExplorerViewModel,
     onOpenWithFile: (FileItem) -> Unit,
-    onRequireInstallPermission: () -> Unit
+    onRequireInstallPermission: () -> Unit,
+    onRename: (FileItem) -> Unit
 ) {
     val context = LocalContext.current
     if (files.isEmpty()) {
@@ -1035,7 +1039,7 @@ private fun DirectoryContentView(
                         onItemClick = { if (selectedPaths.isNotEmpty()) viewModel.toggleFileSelection(item.path) else if (item.isDirectory) viewModel.navigateTo(item.path) else if (openWithPromptOnTap) onOpenWithFile(item) else handleFileOpen(context, item, viewModel, onRequireInstallPermission) },
                         onItemLongClick = { viewModel.toggleFileSelection(item.path) },
                         onInspectDetails = { viewModel.inspectFileDetails(item) },
-                        onRename = { viewModel.inspectFileDetails(item) },
+                        onRename = { onRename(item) },
                         onDelete = { viewModel.deleteItemToTrash(item) },
                         onDeletePermanently = { viewModel.deletePermanently(item) },
                         onZip = { viewModel.toggleFileSelection(item.path) },
