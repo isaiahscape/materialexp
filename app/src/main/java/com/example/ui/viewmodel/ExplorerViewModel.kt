@@ -250,7 +250,7 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     fun navigateTo(path: String, pane: PaneType? = null) {
         val state = _uiState.value
-        val targetPane = pane ?: state.focusedPane
+        val targetPane = pane ?: if (state.isDualPaneEnabled) state.focusedPane else PaneType.PRIMARY
 
         if (targetPane == PaneType.PRIMARY) {
             val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return
@@ -293,7 +293,9 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     fun navigateBack(): Boolean {
         val state = _uiState.value
-        if (state.focusedPane == PaneType.PRIMARY) {
+        val effectivePane = if (state.isDualPaneEnabled) state.focusedPane else PaneType.PRIMARY
+        
+        if (effectivePane == PaneType.PRIMARY) {
             val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return false
             if (activeTab.historyIndex > 0) {
                 val newIdx = activeTab.historyIndex - 1
@@ -340,7 +342,9 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     fun canNavigateBack(): Boolean {
         val state = _uiState.value
-        if (state.focusedPane == PaneType.PRIMARY) {
+        val effectivePane = if (state.isDualPaneEnabled) state.focusedPane else PaneType.PRIMARY
+        
+        if (effectivePane == PaneType.PRIMARY) {
             val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return false
             if (activeTab.historyIndex > 0) return true
             val parentFile = File(activeTab.currentPath).parentFile
@@ -800,7 +804,12 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleDualPane() {
         val newDual = !_uiState.value.isDualPaneEnabled
-        _uiState.update { it.copy(isDualPaneEnabled = newDual) }
+        _uiState.update { 
+            it.copy(
+                isDualPaneEnabled = newDual,
+                focusedPane = if (!newDual) PaneType.PRIMARY else it.focusedPane
+            ) 
+        }
         loadCurrentDirectory()
     }
 

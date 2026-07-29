@@ -450,14 +450,14 @@ fun ExplorerMainScreen(
                                 )
 
                                 BreadcrumbBar(
-                                    currentPath = if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) currentPath else state.secondPanePath,
+                                    currentPath = if (!state.isDualPaneEnabled || state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) currentPath else state.secondPanePath,
                                     rootStoragePath = viewModel.getApplicationsRootPath(),
-                                    isBookmarked = if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) isBookmarked else state.bookmarks.any { it.path == state.secondPanePath },
+                                    isBookmarked = if (!state.isDualPaneEnabled || state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) isBookmarked else state.bookmarks.any { it.path == state.secondPanePath },
                                     isDualPane = state.isDualPaneEnabled,
                                     onNavigateBack = { viewModel.navigateBack() },
                                     onNavigateToSegment = { viewModel.navigateTo(it) },
                                     onToggleBookmark = {
-                                        val path = if (state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) currentPath else state.secondPanePath
+                                        val path = if (!state.isDualPaneEnabled || state.focusedPane == com.example.ui.viewmodel.PaneType.PRIMARY) currentPath else state.secondPanePath
                                         viewModel.toggleBookmark(path, java.io.File(path).name.ifEmpty { "Folder" })
                                     },
                                     onToggleDualPane = { viewModel.toggleDualPane() },
