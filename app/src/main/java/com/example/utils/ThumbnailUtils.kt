@@ -69,4 +69,20 @@ object ThumbnailUtils {
             }
         }
     }
+
+    fun getFolderPreview(folderPath: String): String? {
+        return try {
+            val dir = File(folderPath)
+            if (!dir.exists() || !dir.isDirectory) return null
+            
+            // Look for common image extensions in the folder
+            val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif")
+            val firstImage = dir.listFiles()?.find { file ->
+                file.isFile && file.extension.lowercase() in imageExtensions
+            }
+            firstImage?.absolutePath
+        } catch (e: Exception) {
+            null
+        }
+    }
 }

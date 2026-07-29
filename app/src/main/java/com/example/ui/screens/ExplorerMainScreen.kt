@@ -359,7 +359,8 @@ fun ExplorerMainScreen(
                                 NavigationScreen.HOME -> "Material Explorer"
                                 NavigationScreen.EXPLORER -> {
                                     if (state.categoryFilter != FileCategory.ALL && state.categoryFilter != FileCategory.FOLDER) {
-                                        "Searching: ${state.categoryFilter.name.lowercase().replaceFirstChar { it.uppercase() }}"
+                                        val catLabel = if (state.categoryFilter == FileCategory.APK) "APK" else state.categoryFilter.name.lowercase().replaceFirstChar { it.uppercase() }
+                                        "Searching: $catLabel"
                                     } else {
                                         "Material Explorer"
                                     }

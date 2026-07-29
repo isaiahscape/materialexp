@@ -155,7 +155,7 @@ private fun CategoryGridItem(
     onClick: () -> Unit
 ) {
     val (icon, color) = getCategoryVisuals(category)
-    val label = category.name.lowercase().replaceFirstChar { it.uppercase() }
+    val label = if (category == FileCategory.APK) "APK" else category.name.lowercase().replaceFirstChar { it.uppercase() }
 
     Surface(
         onClick = onClick,

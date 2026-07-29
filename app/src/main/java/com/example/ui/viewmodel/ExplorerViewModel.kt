@@ -213,7 +213,9 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
             if (state.isDualPaneEnabled && state.secondPanePath.isNotBlank()) {
                 secondList = repository.getFiles(
                     path = state.secondPanePath,
-                    showHidden = state.showHiddenFiles
+                    showHidden = state.showHiddenFiles,
+                    searchQuery = state.searchQuery,
+                    categoryFilter = state.categoryFilter
                 )
             }
 

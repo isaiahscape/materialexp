@@ -60,6 +60,14 @@ fun FileThumbnail(
         }
     }
 
+    val folderPreviewPath by produceState<String?>(initialValue = null, file.path) {
+        if (file.isDirectory) {
+            value = withContext(Dispatchers.IO) {
+                ThumbnailUtils.getFolderPreview(file.path)
+            }
+        }
+    }
+
     val placeholderPainter = rememberVectorPainter(image = fallbackIcon)
 
     if (file.category == FileCategory.IMAGE || file.category == FileCategory.VIDEO) {
@@ -67,7 +75,20 @@ fun FileThumbnail(
             model = ImageRequest.Builder(context)
                 .data(file.path)
                 .crossfade(true)
-                .size(128) // Fixed small size for thumbnails to save memory
+                .size(128)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            placeholder = placeholderPainter,
+            error = placeholderPainter,
+            modifier = modifier.fillMaxSize()
+        )
+    } else if (folderPreviewPath != null) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(folderPreviewPath)
+                .crossfade(true)
+                .size(128)
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,

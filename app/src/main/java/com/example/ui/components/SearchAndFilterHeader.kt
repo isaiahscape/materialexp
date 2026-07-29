@@ -155,7 +155,11 @@ fun SearchAndFilterHeader(
                         }
 
                         Text(
-                            text = if (cat == FileCategory.ALL) "All Files" else cat.name.lowercase().replaceFirstChar { it.uppercase() },
+                            text = when (cat) {
+                                FileCategory.ALL -> "All Files"
+                                FileCategory.APK -> "APK"
+                                else -> cat.name.lowercase().replaceFirstChar { it.uppercase() }
+                            },
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 12.sp

@@ -114,10 +114,11 @@ fun FileGridItem(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp
                 ),
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -126,7 +127,10 @@ fun FileGridItem(
                 text = file.formattedSize,
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
