@@ -66,8 +66,7 @@ data class ExplorerUiState(
     val activeZipFile: FileItem? = null,
     val zipEntries: List<String> = emptyList(),
     val inspectedFile: FileItem? = null,
-    val inspectedMd5: String = "",
-    val inspectedSha256: String = "",
+    val inspectedHashes: Map<String, String> = emptyMap(),
     
     // User Message/Snackbar
     val userNotice: String? = null,
@@ -740,27 +739,25 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun inspectFileDetails(fileItem: FileItem) {
+        val hashTypes = listOf("CRC32", "MD5", "SHA-1", "SHA-256", "SHA-384", "SHA-512")
         _uiState.update {
             it.copy(
                 inspectedFile = fileItem,
-                inspectedMd5 = "Computing...",
-                inspectedSha256 = "Computing..."
+                inspectedHashes = hashTypes.associateWith { "Computing..." }
             )
         }
         viewModelScope.launch {
-            val md5 = repository.calculateChecksum(fileItem.path, "MD5")
-            val sha256 = repository.calculateChecksum(fileItem.path, "SHA-256")
+            val hashes = hashTypes.associateWith { type ->
+                repository.calculateChecksum(fileItem.path, type)
+            }
             _uiState.update {
-                it.copy(
-                    inspectedMd5 = md5,
-                    inspectedSha256 = sha256
-                )
+                it.copy(inspectedHashes = hashes)
             }
         }
     }
 
     fun closeFileDetails() {
-        _uiState.update { it.copy(inspectedFile = null, inspectedMd5 = "", inspectedSha256 = "") }
+        _uiState.update { it.copy(inspectedFile = null, inspectedHashes = emptyMap()) }
     }
 
     fun toggleBookmark(path: String, name: String) {

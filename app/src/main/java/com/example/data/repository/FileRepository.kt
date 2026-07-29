@@ -40,7 +40,12 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
+import java.util.zip.CRC32
+import android.webkit.MimeTypeMap
 
 class FileRepository(
     private val context: Context,
@@ -259,13 +264,30 @@ class FileRepository(
             append("r--r--")
         }
 
+        var accessed = file.lastModified()
+        var changed = file.lastModified()
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            runCatching {
+                val attrs = Files.readAttributes(Paths.get(file.absolutePath), BasicFileAttributes::class.java)
+                accessed = attrs.lastAccessTime().toMillis()
+                changed = attrs.lastModifiedTime().toMillis() // changed often maps to last modified in basic attributes
+            }
+        }
+
+        val ext = file.extension.lowercase()
+        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+
         return FileItem(
             name = file.name,
             path = file.absolutePath,
             isDirectory = isDir,
             sizeBytes = if (isDir) 0L else file.length(),
             lastModified = file.lastModified(),
+            lastAccessed = accessed,
+            lastChanged = changed,
             category = category,
+            mimeType = mime,
             childCount = childCount,
             isHidden = file.name.startsWith("."),
             permissions = permissions,
@@ -524,6 +546,21 @@ class FileRepository(
     suspend fun calculateChecksum(path: String, algorithm: String = "MD5"): String = withContext(Dispatchers.IO) {
         val file = File(path)
         if (!file.exists() || !file.isFile) return@withContext "N/A"
+        
+        if (algorithm == "CRC32") {
+            return@withContext runCatching {
+                val crc = CRC32()
+                val buffer = ByteArray(8192)
+                FileInputStream(file).use { fis ->
+                    var read: Int
+                    while (fis.read(buffer).also { read = it } > 0) {
+                        crc.update(buffer, 0, read)
+                    }
+                }
+                "%08X".format(crc.value)
+            }.getOrDefault("Error")
+        }
+
         runCatching {
             val md = MessageDigest.getInstance(algorithm)
             val buffer = ByteArray(8192)
@@ -534,8 +571,8 @@ class FileRepository(
                 }
             }
             val digest = md.digest()
-            digest.joinToString("") { "%02x".format(it) }
-        }.getOrDefault("Error computing $algorithm")
+            digest.joinToString("") { "%02x".format(it).uppercase() }
+        }.getOrDefault("Error")
     }
 
     suspend fun createArchive(

@@ -29,144 +29,253 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.model.FileItem
 
+import android.text.format.Formatter
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.utils.RelativeTimeUtils
+
 @Composable
 fun FileDetailsDialog(
     file: FileItem,
-    md5: String,
-    sha256: String,
+    hashes: Map<String, String>,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    var showChecksums by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFF1C1C1E), // Darker gray/black like MiXplorer
+            contentColor = Color.White,
             tonalElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
+                    .padding(vertical = 12.dp)
             ) {
                 // Header
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Text(
-                            text = "File Details",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(start = 10.dp)
-                        )
+                    val (icon, color) = getCategoryVisuals(file.category)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        FileThumbnail(file, icon, color, modifier = Modifier.size(32.dp))
                     }
+                    
+                    Text(
+                        text = file.name,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 12.dp)
+                    )
 
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.LightGray)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Detail Rows
-                DetailRow("Name", file.name)
-                DetailRow("Path", file.path, canCopy = true, context = context)
-                DetailRow("Size", file.formattedSize)
-                DetailRow("Type", if (file.isDirectory) "Directory" else "${file.extension.uppercase()} File")
-                DetailRow("Permissions", file.permissions)
-                DetailRow("Last Modified", file.formattedDate)
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
-                Text(
-                    text = "Checksums (Hashes)",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                DetailRow("MD5", md5, canCopy = true, context = context)
-                DetailRow("SHA-256", sha256, canCopy = true, context = context)
+                if (showChecksums) {
+                    ChecksumView(hashes = hashes, onBack = { showChecksums = false }, context = context)
+                } else {
+                    MainDetailsView(file = file, onShowChecksums = { showChecksums = true }, context = context)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DetailRow(
-    label: String,
-    value: String,
-    canCopy: Boolean = false,
-    context: Context? = null
+private fun MainDetailsView(
+    file: FileItem,
+    onShowChecksums: () -> Unit,
+    context: Context
 ) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = if (label == "MD5" || label == "SHA-256" || label == "Permissions") FontFamily.Monospace else FontFamily.Default,
-                    fontSize = 13.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+    ) {
+        InfoRow("Path", file.path)
+        InfoRow("Content URI", "content://${context.packageName}.fileprovider/...")
+        
+        val sizeStr = Formatter.formatFileSize(context, file.sizeBytes)
+        InfoRow("Size", "$sizeStr (${String.format(java.util.Locale.getDefault(), "%,d", file.sizeBytes)} B)")
+        InfoRow("Used", "$sizeStr (${String.format(java.util.Locale.getDefault(), "%,d", file.sizeBytes)} B)\nEffective: $sizeStr")
 
-            if (canCopy && context != null && value.isNotBlank() && !value.startsWith("Computing")) {
-                Icon(
-                    imageVector = Icons.Default.ContentCopy,
-                    contentDescription = "Copy $label",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .clickable {
-                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            cm.setPrimaryClip(ClipData.newPlainText(label, value))
-                            Toast.makeText(context, "$label copied to clipboard", Toast.LENGTH_SHORT).show()
-                        }
+        InfoRow("Modified", "${RelativeTimeUtils.formatFullDate(file.lastModified)}\n${RelativeTimeUtils.formatRelativeTime(file.lastModified)}", valueColor = Color(0xFF64B5F6))
+        InfoRow("Changed", RelativeTimeUtils.formatFullDate(file.lastChanged))
+        InfoRow("Accessed", RelativeTimeUtils.formatFullDate(file.lastAccessed))
+        
+        InfoRow("Type", if (file.isDirectory) "Directory" else file.mimeType)
+        InfoRow("Hidden", if (file.isHidden) "Yes" else "No")
+        InfoRow("Permissions", file.permissions)
+        
+        InfoRow("Metadata", "Device: /storage/emulated\n${if (file.isDirectory) "${file.childCount} items" else ""}")
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = Color.Gray.copy(alpha = 0.3f))
+        
+        Text(
+            text = "Comment",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { }
+                .padding(vertical = 12.dp)
+        )
+
+        Text(
+            text = "CHECKSUM",
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color(0xFF64B5F6),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onShowChecksums() }
+                .padding(vertical = 12.dp)
+        )
+    }
+}
+
+@Composable
+private fun ChecksumView(
+    hashes: Map<String, String>,
+    onBack: () -> Unit,
+    context: Context
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Text(
+            text = "Tap to copy to clipboard or long-press to compare\nwith the clipboard hash.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        )
+
+        hashes.forEach { (type, value) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable {
+                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cm.setPrimaryClip(ClipData.newPlainText(type, value))
+                        Toast.makeText(context, "$type copied", Toast.LENGTH_SHORT).show()
+                    },
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "$type:",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.width(80.dp)
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+                    color = Color(0xFF64B5F6),
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Copy",
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color(0xFF64B5F6),
+            modifier = Modifier
+                .clickable {
+                    val allHashes = hashes.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("All Hashes", allHashes))
+                    Toast.makeText(context, "All hashes copied", Toast.LENGTH_SHORT).show()
+                }
+                .padding(vertical = 12.dp)
+        )
+        
+        Text(
+            text = "Back",
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color.Gray,
+            modifier = Modifier
+                .clickable { onBack() }
+                .padding(vertical = 12.dp)
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String,
+    valueColor: Color = Color.White
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color.LightGray,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            modifier = Modifier.width(100.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = valueColor,
+            modifier = Modifier.weight(1f)
+        )
     }
 }

@@ -817,7 +817,7 @@ fun ExplorerMainScreen(
     }
 
     state.inspectedFile?.let { inspectedFile ->
-        FileDetailsDialog(file = inspectedFile, md5 = state.inspectedMd5, sha256 = state.inspectedSha256, onDismiss = { viewModel.closeFileDetails() })
+        FileDetailsDialog(file = inspectedFile, hashes = state.inspectedHashes, onDismiss = { viewModel.closeFileDetails() })
     }
 
     if (showNewFolderDialog) {
