@@ -1,6 +1,8 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audio.SystemAudioPlayer
@@ -831,6 +833,32 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     fun showNotice(notice: String) {
         _uiState.update { it.copy(userNotice = notice) }
+    }
+
+    fun handleExternalIntent(intent: Intent) {
+        val action = intent.action
+        val data: Uri? = intent.data
+        val type = intent.type
+
+        if (action == Intent.ACTION_VIEW || action == Intent.ACTION_EDIT) {
+            data?.let { uri ->
+                viewModelScope.launch {
+                    val fileItem = repository.getFileItemFromUri(uri)
+                    if (fileItem != null) {
+                        if (fileItem.category == FileCategory.ARCHIVE) {
+                            _uiState.update { it.copy(currentScreen = NavigationScreen.EXPLORER) }
+                            navigateTo(fileItem.path)
+                        } else if (fileItem.category == FileCategory.CODE || fileItem.category == FileCategory.DOCUMENT || (type?.startsWith("text/") == true)) {
+                            openTextEditor(fileItem)
+                        } else {
+                            openTextEditor(fileItem)
+                        }
+                    } else {
+                        showNotice("Could not resolve file from external app")
+                    }
+                }
+            }
+        }
     }
 
     fun clearNotice() {

@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +20,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        // Handle external intent if present
+        intent?.let { viewModel.handleExternalIntent(it) }
+
         setContent {
             val state by viewModel.uiState.collectAsState()
             val darkTheme = when (state.themeMode) {
@@ -31,6 +36,11 @@ class MainActivity : ComponentActivity() {
                 ExplorerMainScreen(viewModel = viewModel)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        viewModel.handleExternalIntent(intent)
     }
 
     override fun onResume() {

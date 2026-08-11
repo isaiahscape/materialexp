@@ -50,6 +50,9 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import android.webkit.MimeTypeMap
+import android.net.Uri
+import androidx.core.net.toUri
+import android.provider.OpenableColumns
 
 class FileRepository(
     private val context: Context,
@@ -592,6 +595,9 @@ class FileRepository(
     }
 
     suspend fun readTextFile(path: String): String = withContext(Dispatchers.IO) {
+        if (path.startsWith("content://")) {
+            return@withContext readTextFromUri(path.toUri())
+        }
         val archiveInfo = resolveArchivePath(path)
         if (archiveInfo != null) {
             return@withContext readTextFromArchive(archiveInfo.first, archiveInfo.second)
@@ -609,6 +615,9 @@ class FileRepository(
     }
 
     suspend fun saveTextFile(path: String, content: String): Boolean = withContext(Dispatchers.IO) {
+        if (path.startsWith("content://")) {
+            return@withContext saveTextToUri(path.toUri(), content)
+        }
         val archiveInfo = resolveArchivePath(path)
         if (archiveInfo != null) {
             return@withContext saveTextToArchive(archiveInfo.first, archiveInfo.second, content)
@@ -892,6 +901,56 @@ class FileRepository(
 
     suspend fun removeBookmarkByPath(path: String) = withContext(Dispatchers.IO) {
         dao.deleteBookmarkByPath(path)
+    }
+
+    fun getFileItemFromUri(uri: Uri): FileItem? {
+        if (uri.scheme == "file") {
+            return uri.path?.let { mapToFileItem(File(it)) }
+        }
+        
+        return try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (cursor.moveToFirst()) {
+                    val name = cursor.getString(nameIndex)
+                    val size = cursor.getLong(sizeIndex)
+                    val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+                    
+                    FileItem(
+                        name = name,
+                        path = uri.toString(),
+                        isDirectory = false,
+                        sizeBytes = size,
+                        category = FileItem.resolveCategory(name, false),
+                        mimeType = mime
+                    )
+                } else null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun readTextFromUri(uri: Uri): String = withContext(Dispatchers.IO) {
+        try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                inputStream.bufferedReader().readText()
+            } ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    suspend fun saveTextToUri(uri: Uri, content: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            context.contentResolver.openOutputStream(uri, "wt")?.use { outputStream ->
+                outputStream.write(content.toByteArray())
+                true
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     suspend fun getStorageStats(): StorageStats = withContext(Dispatchers.IO) {
