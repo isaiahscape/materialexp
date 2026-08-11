@@ -23,7 +23,8 @@ data class FileItem(
     val isBookmarked: Boolean = false,
     val permissions: String = "rw-r--r--",
     val extension: String = "",
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
+    val parentArchivePath: String? = null
 ) {
     val formattedSize: String
         get() {

@@ -60,32 +60,48 @@ fun BreadcrumbBar(
     modifier: Modifier = Modifier
 ) {
     val segments = remember(currentPath, rootStoragePath) {
-        if (currentPath == "/") {
-            listOf("/ (Root)" to "/")
-        } else if (currentPath.startsWith("/") && !currentPath.startsWith(rootStoragePath)) {
-            val parts = currentPath.split('/').filter { it.isNotEmpty() }
-            val result = mutableListOf("/ (Root)" to "/")
+        val result = mutableListOf<Pair<String, String>>()
+        val baseAndInternal = if (currentPath.contains("!/")) {
+            currentPath.split("!/", limit = 2)
+        } else {
+            listOf(currentPath)
+        }
+        
+        val basePath = baseAndInternal[0]
+        val internalPath = baseAndInternal.getOrNull(1) ?: ""
+
+        if (basePath == "/") {
+            result.add("/ (Root)" to "/")
+        } else if (basePath.startsWith("/") && !basePath.startsWith(rootStoragePath)) {
+            val parts = basePath.split('/').filter { it.isNotEmpty() }
+            result.add("/ (Root)" to "/")
             var accum = ""
             for (part in parts) {
                 accum = "$accum/$part"
                 result.add(part to accum)
             }
-            result
         } else {
-            val relPath = currentPath.removePrefix(rootStoragePath).trim('/')
-            if (relPath.isEmpty()) {
-                listOf("Internal Storage" to rootStoragePath)
-            } else {
+            val relPath = basePath.removePrefix(rootStoragePath).trim('/')
+            result.add("Internal Storage" to rootStoragePath)
+            if (relPath.isNotEmpty()) {
                 val parts = relPath.split('/')
-                val result = mutableListOf("Internal Storage" to rootStoragePath)
                 var accum = rootStoragePath
                 for (part in parts) {
                     accum = "$accum/$part"
                     result.add(part to accum)
                 }
-                result
             }
         }
+
+        if (internalPath.isNotEmpty()) {
+            val parts = internalPath.split('/').filter { it.isNotEmpty() }
+            var accum = "$basePath!/"
+            for (part in parts) {
+                accum = "$accum$part/"
+                result.add(part to accum.removeSuffix("/"))
+            }
+        }
+        result
     }
 
     Surface(

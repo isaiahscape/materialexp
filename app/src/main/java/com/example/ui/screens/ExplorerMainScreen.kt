@@ -142,7 +142,6 @@ import com.example.ui.components.PermissionDialog
 import com.example.ui.components.SearchAndFilterHeader
 import com.example.ui.components.TabBar
 import com.example.ui.components.TextEditorSheet
-import com.example.ui.components.ZipViewerDialog
 import com.example.ui.screens.HomeScreen
 import com.example.ui.viewmodel.ExplorerViewModel
 import com.example.ui.viewmodel.NavigationScreen
@@ -815,10 +814,6 @@ fun ExplorerMainScreen(
         ImageViewerDialog(file = imgFile, onDismiss = { viewModel.closeImageViewer() })
     }
 
-    state.activeZipFile?.let { zipFile ->
-        ZipViewerDialog(file = zipFile, entries = state.zipEntries, onExtract = { viewModel.extractZipArchive(zipFile) }, onDismiss = { viewModel.closeZipViewer() })
-    }
-
     state.inspectedFile?.let { inspectedFile ->
         FileDetailsDialog(file = inspectedFile, hashes = state.inspectedHashes, onDismiss = { viewModel.closeFileDetails() })
     }
@@ -1087,7 +1082,7 @@ private fun OpenWithDialog(file: FileItem, onDismiss: () -> Unit, viewModel: Exp
                 if (file.category == FileCategory.CODE || file.category == FileCategory.DOCUMENT) OpenWithOptionRow(Icons.Default.EditNote, "Code / Text Editor", "Open in built-in editor") { onDismiss(); viewModel.openTextEditor(file) }
                 if (file.category == FileCategory.IMAGE) OpenWithOptionRow(Icons.Default.Image, "Image Viewer", "View in built-in image viewer") { onDismiss(); viewModel.openImageViewer(file) }
                 if (file.category == FileCategory.AUDIO) OpenWithOptionRow(Icons.Default.MusicNote, "Audio Player", "Play in built-in audio player") { onDismiss(); viewModel.openAudioPlayer(file) }
-                if (file.category == FileCategory.ARCHIVE) OpenWithOptionRow(Icons.Default.FolderZip, "Zip / Archive Inspector", "Inspect zip entries & extract") { onDismiss(); viewModel.inspectZipArchive(file) }
+                if (file.category == FileCategory.ARCHIVE) OpenWithOptionRow(Icons.Default.FolderZip, "Open Archive", "Browse entries directly in explorer") { onDismiss(); viewModel.navigateTo(file.path) }
                 OpenWithOptionRow(Icons.Default.Info, "File Details & Hashes", "View size, path, MD5 & SHA-256") { onDismiss(); viewModel.inspectFileDetails(file) }
                 if (externalApps.isNotEmpty()) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -1180,12 +1175,16 @@ private fun handleFileOpen(context: Context, item: FileItem, viewModel: Explorer
         FileCategory.CODE, FileCategory.DOCUMENT -> viewModel.openTextEditor(item)
         FileCategory.IMAGE -> viewModel.openImageViewer(item)
         FileCategory.AUDIO -> viewModel.openAudioPlayer(item)
-        FileCategory.ARCHIVE -> viewModel.inspectZipArchive(item)
+        FileCategory.ARCHIVE -> viewModel.navigateTo(item.path)
         else -> openWithSystemDefault(context, item, viewModel, onRequireInstallPermission)
     }
 }
 
 fun ExplorerViewModel.getApplicationsRootPath(): String {
-    return uiState.value.tabs.firstOrNull()?.currentPath?.substringBefore("/Documents")
-        ?: uiState.value.tabs.firstOrNull()?.currentPath ?: ""
+    val path = uiState.value.tabs.firstOrNull()?.currentPath ?: ""
+    return if (path.contains("!/")) {
+        path.substringBefore("!/").substringBefore("/Documents")
+    } else {
+        path.substringBefore("/Documents")
+    }
 }

@@ -63,8 +63,6 @@ data class ExplorerUiState(
     val audioProgress: Float = 0f,
     val audioPosition: Long = 0,
     val audioDuration: Long = 0,
-    val activeZipFile: FileItem? = null,
-    val zipEntries: List<String> = emptyList(),
     val inspectedFile: FileItem? = null,
     val inspectedHashes: Map<String, String> = emptyMap(),
     
@@ -251,6 +249,12 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     fun navigateTo(path: String, pane: PaneType? = null) {
         val state = _uiState.value
         val targetPane = pane ?: if (state.isDualPaneEnabled) state.focusedPane else PaneType.PRIMARY
+        
+        val displayTitle = if (path.contains("!/")) {
+            path.substringAfterLast("/").ifEmpty { path.substringBefore("!/").substringAfterLast("/") }
+        } else {
+            File(path).name.ifEmpty { "Storage" }
+        }
 
         if (targetPane == PaneType.PRIMARY) {
             val activeTab = state.tabs.getOrNull(state.activeTabIndex) ?: return
@@ -258,7 +262,7 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
             val updatedHistory = activeTab.history.take(activeTab.historyIndex + 1) + path
             val updatedTab = activeTab.copy(
-                title = File(path).name.ifEmpty { "Storage" },
+                title = displayTitle,
                 currentPath = path,
                 history = updatedHistory,
                 historyIndex = updatedHistory.lastIndex
@@ -303,13 +307,26 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
                 val updatedTab = activeTab.copy(
                     currentPath = prevPath,
                     historyIndex = newIdx,
-                    title = File(prevPath).name.ifEmpty { "Storage" }
+                    title = if (prevPath.contains("!/")) prevPath.substringAfterLast("/") else File(prevPath).name.ifEmpty { "Storage" }
                 )
                 val updatedTabs = state.tabs.toMutableList().apply { set(state.activeTabIndex, updatedTab) }
                 _uiState.update { it.copy(tabs = updatedTabs, selectedFilePaths = emptySet()) }
                 loadCurrentDirectory()
                 return true
             } else {
+                val current = activeTab.currentPath
+                if (current.contains("!/")) {
+                    val parent = if (current.endsWith("!/")) current.substringBefore("!/") else {
+                        val internal = current.substringAfter("!/").removeSuffix("/")
+                        if (internal.contains("/")) {
+                            current.substringBefore("!/") + "!/" + internal.substringBeforeLast("/")
+                        } else {
+                            current.substringBefore("!/")
+                        }
+                    }
+                    navigateTo(parent, PaneType.PRIMARY)
+                    return true
+                }
                 val parentFile = File(activeTab.currentPath).parentFile
                 if (parentFile != null && parentFile.canRead() && activeTab.currentPath != "/") {
                     navigateTo(parentFile.absolutePath, PaneType.PRIMARY)
@@ -330,6 +347,19 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
                 loadCurrentDirectory()
                 return true
             } else {
+                val current = state.secondPanePath
+                if (current.contains("!/")) {
+                    val parent = if (current.endsWith("!/")) current.substringBefore("!/") else {
+                        val internal = current.substringAfter("!/").removeSuffix("/")
+                        if (internal.contains("/")) {
+                            current.substringBefore("!/") + "!/" + internal.substringBeforeLast("/")
+                        } else {
+                            current.substringBefore("!/")
+                        }
+                    }
+                    navigateTo(parent, PaneType.SECONDARY)
+                    return true
+                }
                 val parentFile = File(state.secondPanePath).parentFile
                 if (parentFile != null && parentFile.canRead() && state.secondPanePath != "/") {
                     navigateTo(parentFile.absolutePath, PaneType.SECONDARY)
@@ -630,41 +660,6 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
 
     fun compressSelectedTo7z(archiveFileName: String) {
         compressSelectedToArchive(archiveFileName, ArchiveOptions(com.example.data.model.ArchiveFormat.SEVEN_Z))
-    }
-
-    fun inspectZipArchive(fileItem: FileItem) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val entries = repository.readZipEntries(fileItem.path)
-            _uiState.update {
-                it.copy(
-                    activeZipFile = fileItem,
-                    zipEntries = entries,
-                    isLoading = false
-                )
-            }
-        }
-    }
-
-    fun extractZipArchive(fileItem: FileItem) {
-        val activeTab = _uiState.value.tabs.getOrNull(_uiState.value.activeTabIndex) ?: return
-        val folderName = fileItem.name.substringBeforeLast('.')
-        val targetDir = File(activeTab.currentPath, folderName).absolutePath
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val ok = repository.extractZip(fileItem.path, targetDir)
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    userNotice = if (ok) "Extracted archive to $folderName" else "Extraction failed"
-                )
-            }
-            loadCurrentDirectory()
-        }
-    }
-
-    fun closeZipViewer() {
-        _uiState.update { it.copy(activeZipFile = null, zipEntries = emptyList()) }
     }
 
     fun openTextEditor(fileItem: FileItem) {

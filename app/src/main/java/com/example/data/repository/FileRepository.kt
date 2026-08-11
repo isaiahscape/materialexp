@@ -45,6 +45,10 @@ import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 import java.util.zip.CRC32
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import android.webkit.MimeTypeMap
 
 class FileRepository(
@@ -53,6 +57,16 @@ class FileRepository(
 ) {
     val bookmarks: Flow<List<BookmarkEntity>> = dao.getAllBookmarks()
     val trashItems: Flow<List<TrashEntity>> = dao.getAllTrashItems()
+
+    private val ARCHIVE_DELIMITER = "!/"
+
+    fun resolveArchivePath(path: String): Pair<File, String>? {
+        if (!path.contains(ARCHIVE_DELIMITER)) return null
+        val parts = path.split(ARCHIVE_DELIMITER, limit = 2)
+        val archiveFile = File(parts[0])
+        if (!archiveFile.exists() || archiveFile.isDirectory) return null
+        return archiveFile to (parts.getOrNull(1) ?: "")
+    }
 
     val systemRootPath: String = "/"
 
@@ -219,11 +233,21 @@ class FileRepository(
         searchQuery: String = "",
         categoryFilter: FileCategory = FileCategory.ALL
     ): List<FileItem> = withContext(Dispatchers.IO) {
+        val archiveInfo = resolveArchivePath(path)
+        if (archiveInfo != null) {
+            return@withContext getFilesFromArchive(archiveInfo.first, archiveInfo.second, searchQuery)
+        }
+
         if (categoryFilter != FileCategory.ALL && categoryFilter != FileCategory.FOLDER) {
             return@withContext searchFilesByCategory(categoryFilter, searchQuery)
         }
         
         val targetDir = File(path)
+        // If it's an archive file and not a directory, we "enter" it if it's the target path
+        if (targetDir.exists() && !targetDir.isDirectory && FileItem.resolveCategory(targetDir.name, false) == FileCategory.ARCHIVE) {
+            return@withContext getFilesFromArchive(targetDir, "", searchQuery)
+        }
+
         var rawFiles = targetDir.listFiles()
 
         if (rawFiles == null && (path == "/" || path.startsWith("/data") || path.startsWith("/system") || path.startsWith("/proc") || path.startsWith("/etc") || path.startsWith("/dev"))) {
@@ -456,6 +480,9 @@ class FileRepository(
     }
 
     suspend fun deletePermanently(item: FileItem): Boolean = withContext(Dispatchers.IO) {
+        if (item.parentArchivePath != null) {
+            return@withContext deleteFromArchive(item)
+        }
         val target = File(item.path)
         if (target.exists()) {
             target.deleteRecursively()
@@ -504,6 +531,10 @@ class FileRepository(
     }
 
     suspend fun readTextFile(path: String): String = withContext(Dispatchers.IO) {
+        val archiveInfo = resolveArchivePath(path)
+        if (archiveInfo != null) {
+            return@withContext readTextFromArchive(archiveInfo.first, archiveInfo.second)
+        }
         val file = File(path)
         if (file.exists() && file.isFile && file.canRead()) {
             runCatching { file.readText() }.getOrElse {
@@ -517,6 +548,10 @@ class FileRepository(
     }
 
     suspend fun saveTextFile(path: String, content: String): Boolean = withContext(Dispatchers.IO) {
+        val archiveInfo = resolveArchivePath(path)
+        if (archiveInfo != null) {
+            return@withContext saveTextToArchive(archiveInfo.first, archiveInfo.second, content)
+        }
         val file = File(path)
         try {
             if (file.exists() && file.canWrite()) {
@@ -854,5 +889,128 @@ class FileRepository(
             apksBytes = apkBytes,
             systemBytes = systemBytes
         )
+    }
+
+    private fun getFilesFromArchive(archiveFile: File, internalPath: String, query: String): List<FileItem> {
+        val result = mutableListOf<FileItem>()
+        val entries = mutableSetOf<String>()
+        val normPath = if (internalPath.isEmpty() || internalPath.endsWith("/")) internalPath else "$internalPath/"
+        
+        runCatching {
+            ZipFile(archiveFile).use { zip ->
+                val zipEntries = zip.entries()
+                while (zipEntries.hasMoreElements()) {
+                    val entry = zipEntries.nextElement()
+                    val entryName = entry.name
+                    
+                    if (entryName.startsWith(normPath) && entryName != normPath) {
+                        val relative = entryName.substring(normPath.length)
+                        val parts = relative.split('/')
+                        val name = parts[0]
+                        if (name.isEmpty()) continue
+                        
+                        if (!entries.contains(name)) {
+                            val isDir = parts.size > 1 || entry.isDirectory
+                            if (query.isNotBlank() && !name.contains(query, ignoreCase = true)) continue
+                            
+                            result.add(FileItem(
+                                name = name,
+                                path = "${archiveFile.absolutePath}!/$normPath$name",
+                                isDirectory = isDir,
+                                sizeBytes = if (isDir) 0 else entry.size,
+                                lastModified = entry.time,
+                                category = FileItem.resolveCategory(name, isDir),
+                                parentArchivePath = archiveFile.absolutePath
+                            ))
+                            entries.add(name)
+                        }
+                    }
+                }
+            }
+        }
+        return result
+    }
+
+    private fun deleteFromArchive(item: FileItem): Boolean {
+        val archiveFile = File(item.parentArchivePath!!)
+        val archiveInfo = resolveArchivePath(item.path) ?: return false
+        val internalPathToRemove = archiveInfo.second
+        
+        val tempFile = File(archiveFile.parent, "${archiveFile.name}.tmp")
+        var success = false
+        runCatching {
+            ZipInputStream(FileInputStream(archiveFile)).use { zin ->
+                ZipOutputStream(FileOutputStream(tempFile)).use { zout ->
+                    var entry = zin.nextEntry
+                    while (entry != null) {
+                        val entryName = entry.name
+                        val shouldDelete = if (item.isDirectory) {
+                            entryName.startsWith("$internalPathToRemove/") || entryName == "$internalPathToRemove/"
+                        } else {
+                            entryName == internalPathToRemove
+                        }
+                        
+                        if (!shouldDelete) {
+                            zout.putNextEntry(ZipEntry(entryName))
+                            zin.copyTo(zout)
+                            zout.closeEntry()
+                        }
+                        zin.closeEntry()
+                        entry = zin.nextEntry
+                    }
+                }
+            }
+            if (archiveFile.delete()) {
+                tempFile.renameTo(archiveFile)
+                success = true
+            }
+        }
+        return success
+    }
+
+    private fun readTextFromArchive(archiveFile: File, internalPath: String): String {
+        return try {
+            ZipFile(archiveFile).use { zip ->
+                val entry = zip.getEntry(internalPath) ?: return ""
+                zip.getInputStream(entry).bufferedReader().readText()
+            }
+        } catch (e: Exception) { "" }
+    }
+
+    private fun saveTextToArchive(archiveFile: File, internalPath: String, content: String): Boolean {
+        val tempFile = File(archiveFile.parent, "${archiveFile.name}.tmp")
+        var success = false
+        runCatching {
+            ZipInputStream(FileInputStream(archiveFile)).use { zin ->
+                ZipOutputStream(FileOutputStream(tempFile)).use { zout ->
+                    var entry = zin.nextEntry
+                    var found = false
+                    while (entry != null) {
+                        val entryName = entry.name
+                        if (entryName == internalPath) {
+                            zout.putNextEntry(ZipEntry(entryName))
+                            zout.write(content.toByteArray())
+                            found = true
+                        } else {
+                            zout.putNextEntry(ZipEntry(entryName))
+                            zin.copyTo(zout)
+                        }
+                        zout.closeEntry()
+                        zin.closeEntry()
+                        entry = zin.nextEntry
+                    }
+                    if (!found) {
+                        zout.putNextEntry(ZipEntry(internalPath))
+                        zout.write(content.toByteArray())
+                        zout.closeEntry()
+                    }
+                }
+            }
+            if (archiveFile.delete()) {
+                tempFile.renameTo(archiveFile)
+                success = true
+            }
+        }
+        return success
     }
 }
