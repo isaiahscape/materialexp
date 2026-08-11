@@ -242,6 +242,7 @@ class FileRepository(
             return@withContext searchFilesByCategory(categoryFilter, searchQuery)
         }
         
+        val isRooted = RootShellHelper.isRootAvailable()
         val targetDir = File(path)
         // If it's an archive file and not a directory, we "enter" it if it's the target path
         if (targetDir.exists() && !targetDir.isDirectory && FileItem.resolveCategory(targetDir.name, false) == FileCategory.ARCHIVE) {
@@ -251,7 +252,7 @@ class FileRepository(
         var rawFiles = targetDir.listFiles()
 
         if (rawFiles == null && (path == "/" || path.startsWith("/data") || path.startsWith("/system") || path.startsWith("/proc") || path.startsWith("/etc") || path.startsWith("/dev"))) {
-            if (RootShellHelper.isRootAvailable()) {
+            if (isRooted) {
                 val names = RootShellHelper.listRootDirectory(path)
                 rawFiles = names.map { File(targetDir, it) }.toTypedArray()
             }
@@ -261,8 +262,11 @@ class FileRepository(
             return@withContext emptyList()
         }
 
+        val hiddenInRoot = setOf("data", "root", "sbin", "lost+found", "init", "config")
+
         rawFiles
             .filter { file ->
+                if (!isRooted && path == "/" && file.name in hiddenInRoot) return@filter false
                 if (!showHidden && file.isHidden) return@filter false
                 if (searchQuery.isNotBlank() && !file.name.contains(searchQuery, ignoreCase = true)) {
                     return@filter false
@@ -377,18 +381,41 @@ class FileRepository(
 
     suspend fun createFolder(parentPath: String, name: String): Boolean = withContext(Dispatchers.IO) {
         val newDir = File(parentPath, name)
-        if (!newDir.exists()) newDir.mkdirs() else false
+        if (newDir.exists()) return@withContext false
+        
+        if (newDir.mkdirs()) return@withContext true
+        
+        if (RootShellHelper.isRootAvailable()) {
+            return@withContext RootShellHelper.createRootFolder(newDir.absolutePath)
+        }
+        false
     }
 
     suspend fun createFile(parentPath: String, name: String, initialContent: String = ""): Boolean = withContext(Dispatchers.IO) {
         val newFile = File(parentPath, name)
-        if (!newFile.exists()) {
-            newFile.createNewFile()
-            if (initialContent.isNotEmpty()) {
-                newFile.writeText(initialContent)
+        if (newFile.exists()) return@withContext false
+        
+        val created = try {
+            if (newFile.createNewFile()) {
+                if (initialContent.isNotEmpty()) {
+                    newFile.writeText(initialContent)
+                }
+                true
+            } else false
+        } catch (e: Exception) {
+            false
+        }
+        
+        if (created) return@withContext true
+        
+        if (RootShellHelper.isRootAvailable()) {
+            val rootOk = RootShellHelper.createRootFile(newFile.absolutePath)
+            if (rootOk && initialContent.isNotEmpty()) {
+                RootShellHelper.writeRootFile(newFile.absolutePath, initialContent)
             }
-            true
-        } else false
+            return@withContext rootOk
+        }
+        false
     }
 
     suspend fun deleteToTrash(item: FileItem): Boolean = withContext(Dispatchers.IO) {
@@ -484,9 +511,14 @@ class FileRepository(
             return@withContext deleteFromArchive(item)
         }
         val target = File(item.path)
-        if (target.exists()) {
-            target.deleteRecursively()
-        } else false
+        if (!target.exists()) return@withContext false
+        
+        if (target.deleteRecursively()) return@withContext true
+        
+        if (RootShellHelper.isRootAvailable()) {
+            return@withContext RootShellHelper.deleteRootItem(item.path)
+        }
+        false
     }
 
     suspend fun emptyTrash() = withContext(Dispatchers.IO) {
@@ -499,19 +531,35 @@ class FileRepository(
         val file = File(oldPath)
         if (!file.exists()) return@withContext false
         val dest = File(file.parentFile, newName)
-        file.renameTo(dest)
+        if (file.renameTo(dest)) return@withContext true
+        
+        if (RootShellHelper.isRootAvailable()) {
+            return@withContext RootShellHelper.moveRootItem(oldPath, dest.absolutePath)
+        }
+        false
     }
 
     suspend fun copyFile(sourcePath: String, destParentPath: String): Boolean = withContext(Dispatchers.IO) {
         val src = File(sourcePath)
         if (!src.exists()) return@withContext false
         val dest = File(destParentPath, src.name)
-        if (src.isDirectory) {
-            src.copyRecursively(dest, overwrite = true)
-        } else {
-            src.copyTo(dest, overwrite = true)
-            true
+        val ok = try {
+            if (src.isDirectory) {
+                src.copyRecursively(dest, overwrite = true)
+            } else {
+                src.copyTo(dest, overwrite = true)
+                true
+            }
+        } catch (e: Exception) {
+            false
         }
+        
+        if (ok) return@withContext true
+        
+        if (RootShellHelper.isRootAvailable()) {
+            return@withContext RootShellHelper.copyRootItem(sourcePath, dest.absolutePath)
+        }
+        false
     }
 
     suspend fun moveFile(sourcePath: String, destParentPath: String): Boolean = withContext(Dispatchers.IO) {
@@ -519,15 +567,28 @@ class FileRepository(
         if (!src.exists()) return@withContext false
         val dest = File(destParentPath, src.name)
         val renamed = src.renameTo(dest)
-        if (!renamed) {
+        if (renamed) return@withContext true
+        
+        val fallbackOk = try {
             if (src.isDirectory) {
-                src.copyRecursively(dest, overwrite = true)
-                src.deleteRecursively()
+                if (src.copyRecursively(dest, overwrite = true)) {
+                    src.deleteRecursively()
+                } else false
             } else {
                 src.copyTo(dest, overwrite = true)
                 src.delete()
+                true
             }
-        } else true
+        } catch (e: Exception) {
+            false
+        }
+        
+        if (fallbackOk) return@withContext true
+        
+        if (RootShellHelper.isRootAvailable()) {
+            return@withContext RootShellHelper.moveRootItem(sourcePath, dest.absolutePath)
+        }
+        false
     }
 
     suspend fun readTextFile(path: String): String = withContext(Dispatchers.IO) {
@@ -572,6 +633,10 @@ class FileRepository(
 
     suspend fun getRootStatus(): String = withContext(Dispatchers.IO) {
         RootShellHelper.checkMagiskOrKernelSuInstalled()
+    }
+
+    suspend fun isRootAvailable(): Boolean = withContext(Dispatchers.IO) {
+        RootShellHelper.isRootAvailable()
     }
 
     suspend fun runSuperUserCommand(cmd: String): RootResult = withContext(Dispatchers.IO) {

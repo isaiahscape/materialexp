@@ -69,6 +69,7 @@ data class ExplorerUiState(
     // User Message/Snackbar
     val userNotice: String? = null,
     val rootStatus: String = "Checking...",
+    val isRootActive: Boolean = false,
     val storageDrives: List<FileRepository.StorageDrive> = emptyList(),
     val isStoragePermissionGranted: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM
@@ -160,7 +161,11 @@ class ExplorerViewModel(application: Application) : AndroidViewModel(application
     fun checkRootStatus() {
         viewModelScope.launch {
             val status = repository.getRootStatus()
-            _uiState.update { it.copy(rootStatus = status) }
+            val isRooted = repository.isRootAvailable()
+            _uiState.update { it.copy(rootStatus = status, isRootActive = isRooted) }
+            if (isRooted) {
+                loadCurrentDirectory() // Re-load to show hidden root folders
+            }
         }
     }
 

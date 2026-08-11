@@ -15,25 +15,9 @@ data class RootResult(
 
 object RootShellHelper {
 
-    private val SU_PATHS = arrayOf(
-        "/system/bin/su",
-        "/system/xbin/su",
-        "/sbin/su",
-        "/system/sd/xbin/su",
-        "/system/usr/we-need-root/su",
-        "/data/local/xbin/su",
-        "/data/local/bin/su",
-        "/data/local/su",
-        "/data/adb/ksu/bin/su",
-        "/data/adb/magisk/magisk"
-    )
-
     suspend fun isRootAvailable(): Boolean = withContext(Dispatchers.IO) {
-        val hasSuBinary = SU_PATHS.any { File(it).exists() }
-        if (hasSuBinary) return@withContext true
-
         val result = executeSuCommand("id")
-        result.isSuccess && result.output.contains("uid=0")
+        result.isSuccess && (result.output.contains("uid=0") || result.output.contains("root"))
     }
 
     suspend fun checkMagiskOrKernelSuInstalled(): String = withContext(Dispatchers.IO) {
@@ -119,5 +103,30 @@ object RootShellHelper {
         } else {
             emptyList()
         }
+    }
+
+    suspend fun deleteRootItem(path: String): Boolean = withContext(Dispatchers.IO) {
+        val result = executeSuCommand("rm -rf '$path'")
+        result.isSuccess
+    }
+
+    suspend fun copyRootItem(src: String, dst: String): Boolean = withContext(Dispatchers.IO) {
+        val result = executeSuCommand("cp -rf '$src' '$dst'")
+        result.isSuccess
+    }
+
+    suspend fun moveRootItem(src: String, dst: String): Boolean = withContext(Dispatchers.IO) {
+        val result = executeSuCommand("mv -f '$src' '$dst'")
+        result.isSuccess
+    }
+
+    suspend fun createRootFolder(path: String): Boolean = withContext(Dispatchers.IO) {
+        val result = executeSuCommand("mkdir -p '$path'")
+        result.isSuccess
+    }
+
+    suspend fun createRootFile(path: String): Boolean = withContext(Dispatchers.IO) {
+        val result = executeSuCommand("touch '$path'")
+        result.isSuccess
     }
 }
