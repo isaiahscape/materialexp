@@ -62,6 +62,9 @@ class FileRepository(
     val trashItems: Flow<List<TrashEntity>> = dao.getAllTrashItems()
 
     private val ARCHIVE_DELIMITER = "!/"
+    private val ROOT_FALLBACK_NAMES = listOf(
+        "system", "storage", "mnt", "proc", "dev", "etc", "product", "vendor", "apex", "bin", "odm", "oem"
+    )
 
     fun resolveArchivePath(path: String): Pair<File, String>? {
         if (!path.contains(ARCHIVE_DELIMITER)) return null
@@ -258,6 +261,9 @@ class FileRepository(
             if (isRooted) {
                 val names = RootShellHelper.listRootDirectory(path)
                 rawFiles = names.map { File(targetDir, it) }.toTypedArray()
+            } else if (path == "/") {
+                // Fallback for unrooted devices to show common folders
+                rawFiles = ROOT_FALLBACK_NAMES.map { File(targetDir, it) }.toTypedArray()
             }
         }
 
