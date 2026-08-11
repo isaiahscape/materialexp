@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.overseer.explorer"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.material.explorer"
+    applicationId = "com.overseer.explorer"
     minSdk = 29
     targetSdk = 36
     versionCode = 4

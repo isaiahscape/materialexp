@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Material Explorer"
+rootProject.name = "Overseer"
 
 include(":app")

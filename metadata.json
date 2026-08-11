@@ -1,5 +1,5 @@
 {
-  "name": "Material Explorer",
+  "name": "Overseer",
   "description": "Minimalist, feature-rich Material 3 file manager with multi-tab browsing, storage analyzer, archiver, text editor, and advanced file management.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

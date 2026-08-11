@@ -17,3 +17,8 @@ local.properties
 .env
 debug.keystore
 /.artifacts
+/.idea
+/temp_jar
+/app/debug
+/app/release
+/temp/aar

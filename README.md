@@ -1,9 +1,9 @@
-# Material Explorer (`materialexp`)
+# Overseer (`overseer`)
 
 [![Android Build](https://github.com/isaiahscape/materialexp/actions/workflows/android-build.yml/badge.svg)](https://github.com/isaiahscape/materialexp/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Material Explorer** is a modern, minimalist, and feature-packed Android file manager built using **Jetpack Compose** and **Material Design 3**. Designed for high productivity and intuitive interaction, it features multi-tab file browsing, dynamic view modes, storage analysis, built-in text/code editing, archive management, and responsive floating controls.
+**Overseer** is a modern, minimalist, and feature-packed Android file manager built using **Jetpack Compose** and **Material Design 3**. Designed for high productivity and intuitive interaction, it features multi-tab file browsing, dynamic view modes, storage analysis, built-in text/code editing, archive management, and responsive floating controls.
 
 ---
 
