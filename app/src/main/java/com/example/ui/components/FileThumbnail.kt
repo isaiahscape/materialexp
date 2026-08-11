@@ -30,17 +30,12 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.FileCategory
 import com.example.data.model.FileItem
-import com.example.ui.theme.ColorApk
-import com.example.ui.theme.ColorArchive
-import com.example.ui.theme.ColorAudio
-import com.example.ui.theme.ColorCode
-import com.example.ui.theme.ColorDoc
-import com.example.ui.theme.ColorFolder
-import com.example.ui.theme.ColorImage
-import com.example.ui.theme.ColorVideo
+import com.example.ui.theme.*
 import com.example.utils.ThumbnailUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+import androidx.compose.foundation.isSystemInDarkTheme
 
 @Composable
 fun FileThumbnail(
@@ -113,16 +108,18 @@ fun FileThumbnail(
     }
 }
 
+@Composable
 fun getCategoryVisuals(category: FileCategory): Pair<ImageVector, Color> {
+    val isDark = isSystemInDarkTheme()
     return when (category) {
-        FileCategory.FOLDER -> Icons.Default.Folder to ColorFolder
-        FileCategory.IMAGE -> Icons.Default.Image to ColorImage
-        FileCategory.VIDEO -> Icons.Default.Movie to ColorVideo
-        FileCategory.AUDIO -> Icons.Default.AudioFile to ColorAudio
-        FileCategory.DOCUMENT -> Icons.Default.Description to ColorDoc
-        FileCategory.CODE -> Icons.Default.Code to ColorCode
-        FileCategory.ARCHIVE -> Icons.Default.FolderZip to ColorArchive
-        FileCategory.APK -> Icons.Default.Android to ColorApk
+        FileCategory.FOLDER -> Icons.Default.Folder to (if (isDark) ColorFolderDark else ColorFolderLight)
+        FileCategory.IMAGE -> Icons.Default.Image to (if (isDark) ColorImageDark else ColorImageLight)
+        FileCategory.VIDEO -> Icons.Default.Movie to (if (isDark) ColorVideoDark else ColorVideoLight)
+        FileCategory.AUDIO -> Icons.Default.AudioFile to (if (isDark) ColorAudioDark else ColorAudioLight)
+        FileCategory.DOCUMENT -> Icons.Default.Description to (if (isDark) ColorDocDark else ColorDocLight)
+        FileCategory.CODE -> Icons.Default.Code to (if (isDark) ColorCodeDark else ColorCodeLight)
+        FileCategory.ARCHIVE -> Icons.Default.FolderZip to (if (isDark) ColorArchiveDark else ColorArchiveLight)
+        FileCategory.APK -> Icons.Default.Android to (if (isDark) ColorApkDark else ColorApkLight)
         else -> Icons.Default.QuestionMark to Color.Gray
     }
 }

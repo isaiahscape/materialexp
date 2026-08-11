@@ -38,13 +38,23 @@ val OnSurfaceDark = Color(0xFFFFFFFF)
 val SurfaceVariantDark = Color(0xFF1A1A1A)
 val OnSurfaceVariantDark = Color(0xFFA3A3A3)
 
-// Monochrome Category Accent Shades
-val ColorFolder = Color(0xFF9E9E9E)
-val ColorImage = Color(0xFFBDBDBD)
-val ColorVideo = Color(0xFF757575)
-val ColorAudio = Color(0xFF616161)
-val ColorDoc = Color(0xFFE0E0E0)
-val ColorCode = Color(0xFFEEEEEE)
-val ColorArchive = Color(0xFF8D8D8D)
-val ColorApk = Color(0xFF424242)
+// Monochrome Category Accent Shades - Light
+val ColorFolderLight = Color(0xFF757575)
+val ColorImageLight = Color(0xFF616161)
+val ColorVideoLight = Color(0xFF424242)
+val ColorAudioLight = Color(0xFF212121)
+val ColorDocLight = Color(0xFF9E9E9E)
+val ColorCodeLight = Color(0xFFBDBDBD)
+val ColorArchiveLight = Color(0xFF424242)
+val ColorApkLight = Color(0xFF000000)
+
+// Monochrome Category Accent Shades - Dark
+val ColorFolderDark = Color(0xFFBDBDBD)
+val ColorImageDark = Color(0xFFE0E0E0)
+val ColorVideoDark = Color(0xFFEEEEEE)
+val ColorAudioDark = Color(0xFFFFFFFF)
+val ColorDocDark = Color(0xFF9E9E9E)
+val ColorCodeDark = Color(0xFF757575)
+val ColorArchiveDark = Color(0xFFBDBDBD)
+val ColorApkDark = Color(0xFFFFFFFF)
 

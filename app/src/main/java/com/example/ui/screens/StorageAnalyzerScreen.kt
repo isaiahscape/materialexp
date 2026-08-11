@@ -41,13 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.StorageStats
 import com.example.ui.components.StorageOverviewCard
-import com.example.ui.theme.ColorApk
-import com.example.ui.theme.ColorArchive
-import com.example.ui.theme.ColorAudio
-import com.example.ui.theme.ColorDoc
-import com.example.ui.theme.ColorImage
-import com.example.ui.theme.ColorVideo
 import java.util.Locale
+import com.example.data.model.FileCategory
+import com.example.ui.components.getCategoryVisuals
 
 @Composable
 fun StorageAnalyzerScreen(
@@ -93,13 +89,13 @@ fun StorageAnalyzerScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        CategoryRow("Images", stats.imagesBytes, Icons.Default.Image, ColorImage) { onCategoryClick("IMAGE") }
-        CategoryRow("Videos", stats.videosBytes, Icons.Default.Image, ColorVideo) { onCategoryClick("VIDEO") }
-        CategoryRow("Audio & Music", stats.audioBytes, Icons.Default.AudioFile, ColorAudio) { onCategoryClick("AUDIO") }
-        CategoryRow("Documents", stats.documentsBytes, Icons.Default.Description, ColorDoc) { onCategoryClick("DOCUMENT") }
-        CategoryRow("Archives & ZIPs", stats.archivesBytes, Icons.Default.FolderZip, ColorArchive) { onCategoryClick("ARCHIVE") }
-        CategoryRow("APKs & Apps", stats.apksBytes, Icons.Default.Android, ColorApk) { onCategoryClick("APK") }
-        CategoryRow("System & OS Data", stats.systemBytes, Icons.Default.Description, Color.Gray) {}
+        CategoryRow("Images", stats.imagesBytes, FileCategory.IMAGE) { onCategoryClick("IMAGE") }
+        CategoryRow("Videos", stats.videosBytes, FileCategory.VIDEO) { onCategoryClick("VIDEO") }
+        CategoryRow("Audio & Music", stats.audioBytes, FileCategory.AUDIO) { onCategoryClick("AUDIO") }
+        CategoryRow("Documents", stats.documentsBytes, FileCategory.DOCUMENT) { onCategoryClick("DOCUMENT") }
+        CategoryRow("Archives & ZIPs", stats.archivesBytes, FileCategory.ARCHIVE) { onCategoryClick("ARCHIVE") }
+        CategoryRow("APKs & Apps", stats.apksBytes, FileCategory.APK) { onCategoryClick("APK") }
+        CategoryRow("System & OS Data", stats.systemBytes, FileCategory.UNKNOWN) {}
     }
 }
 
@@ -107,10 +103,10 @@ fun StorageAnalyzerScreen(
 private fun CategoryRow(
     title: String,
     bytes: Long,
-    icon: ImageVector,
-    color: Color,
+    category: FileCategory,
     onClick: () -> Unit
 ) {
+    val (icon, color) = getCategoryVisuals(category)
     val mb = bytes / (1024.0 * 1024.0)
     val gb = mb / 1024.0
     val formatted = if (gb >= 1.0) String.format(Locale.getDefault(), "%.2f GB", gb) else String.format(Locale.getDefault(), "%.1f MB", mb)

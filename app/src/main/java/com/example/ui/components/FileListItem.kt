@@ -62,14 +62,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import com.example.ui.viewmodel.ExplorerViewModel
 import com.example.data.model.FileItem
-import com.example.ui.theme.ColorApk
-import com.example.ui.theme.ColorArchive
-import com.example.ui.theme.ColorAudio
-import com.example.ui.theme.ColorCode
-import com.example.ui.theme.ColorDoc
-import com.example.ui.theme.ColorFolder
-import com.example.ui.theme.ColorImage
-import com.example.ui.theme.ColorVideo
+import com.example.ui.theme.*
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
