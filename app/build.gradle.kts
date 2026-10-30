@@ -33,16 +33,16 @@ android {
         keyPassword = System.getenv("KEY_PASSWORD")
       } else {
         storeFile = file("${rootDir}/debug.keystore")
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
+        storePassword = "tsnbuilds"
+        keyAlias = "tsn-debug"
+        keyPassword = "tsnbuilds"
       }
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      storePassword = "tsnbuilds"
+      keyAlias = "tsn-debug"
+      keyPassword = "tsnbuilds"
     }
   }
 
