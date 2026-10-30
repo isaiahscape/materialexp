@@ -20,7 +20,7 @@
 
 ---
 
-## Tech Stack & Architecture
+## Architecture
 
 - **Language**: [Kotlin](https://kotlinlang.org/)
 - **UI Framework**: [Jetpack Compose](https://developer.android.com/jetpack/compose) with Material Design 3 (`androidx.compose.material3`)
