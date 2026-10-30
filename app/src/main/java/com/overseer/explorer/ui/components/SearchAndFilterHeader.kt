@@ -60,8 +60,12 @@ fun SearchAndFilterHeader(
     ) {
         AnimatedVisibility(
             visible = isSearchVisible,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
+            enter = expandVertically(
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium)),
+            exit = shrinkVertically(
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),

@@ -7,7 +7,17 @@ import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import android.widget.Toast
+import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import kotlinx.coroutines.CancellationException
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -189,18 +199,39 @@ fun ExplorerMainScreen(
     var showAddMenu by remember { mutableStateOf(false) }
     var showInstallPermissionDialog by remember { mutableStateOf(false) }
 
-    BackHandler(
-        enabled = drawerState.isOpen || isSearchVisible || showAddMenu || state.currentScreen != NavigationScreen.EXPLORER || viewModel.canNavigateBack()
-    ) {
-        when {
-            drawerState.isOpen -> scope.launch { drawerState.close() }
-            showAddMenu -> showAddMenu = false
-            isSearchVisible -> {
-                isSearchVisible = false
-                viewModel.setSearchQuery("")
+    var predictiveBackProgress by remember { mutableFloatStateOf(0f) }
+    var predictiveSwipeEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
+    val animatedBackProgress by animateFloatAsState(
+        targetValue = predictiveBackProgress,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "predictiveBackProgress"
+    )
+
+    PredictiveBackHandler(
+        enabled = drawerState.isOpen || isSearchVisible || showAddMenu || state.selectedFilePaths.isNotEmpty() || state.currentScreen != NavigationScreen.EXPLORER || viewModel.canNavigateBack()
+    ) { progress ->
+        try {
+            progress.collect { backEvent ->
+                predictiveSwipeEdge = backEvent.swipeEdge
+                predictiveBackProgress = backEvent.progress
             }
-            state.currentScreen != NavigationScreen.EXPLORER -> viewModel.switchScreen(NavigationScreen.EXPLORER)
-            else -> viewModel.navigateBack()
+            predictiveBackProgress = 0f
+            when {
+                drawerState.isOpen -> scope.launch { drawerState.close() }
+                showAddMenu -> showAddMenu = false
+                isSearchVisible -> {
+                    isSearchVisible = false
+                    viewModel.setSearchQuery("")
+                }
+                state.selectedFilePaths.isNotEmpty() -> viewModel.clearSelection()
+                state.currentScreen != NavigationScreen.EXPLORER -> viewModel.switchScreen(NavigationScreen.EXPLORER)
+                else -> viewModel.navigateBack()
+            }
+        } catch (e: CancellationException) {
+            predictiveBackProgress = 0f
         }
     }
 
@@ -414,8 +445,42 @@ fun ExplorerMainScreen(
             ) {
                 AnimatedContent(
                     targetState = state.currentScreen,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val progress = animatedBackProgress
+                            val scale = 1f - (progress * 0.08f)
+                            scaleX = scale
+                            scaleY = scale
+                            val edgeDirection = if (predictiveSwipeEdge == BackEventCompat.EDGE_LEFT) 1f else -1f
+                            translationX = edgeDirection * progress * 28.dp.toPx()
+                            alpha = 1f - (progress * 0.12f)
+                            shape = RoundedCornerShape((progress * 28f).dp)
+                            clip = progress > 0.005f
+                        },
                     transitionSpec = {
-                        (fadeIn() + scaleIn(initialScale = 0.95f)).togetherWith(fadeOut() + scaleOut(targetScale = 0.95f))
+                        val isForward = targetState.ordinal >= initialState.ordinal
+                        val slideDistance = { fullWidth: Int -> (fullWidth * 0.14f).toInt() * if (isForward) 1 else -1 }
+                        val spatialFloatSpring = spring<Float>(
+                            dampingRatio = 0.72f,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                        val spatialOffsetSpring = spring<IntOffset>(
+                            dampingRatio = 0.72f,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                        val effectsSpring = spring<Float>(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                        (slideInHorizontally(animationSpec = spatialOffsetSpring, initialOffsetX = slideDistance) +
+                            scaleIn(initialScale = 0.90f, animationSpec = spatialFloatSpring) +
+                            fadeIn(animationSpec = effectsSpring))
+                            .togetherWith(
+                                slideOutHorizontally(animationSpec = spatialOffsetSpring, targetOffsetX = { -slideDistance(it) }) +
+                                    scaleOut(targetScale = 0.92f, animationSpec = spatialFloatSpring) +
+                                    fadeOut(animationSpec = effectsSpring)
+                            )
                     },
                     label = "screenTransition"
                 ) { targetScreen ->
@@ -483,6 +548,7 @@ fun ExplorerMainScreen(
                                                 }
                                         ) {
                                             DirectoryContentView(
+                                                currentPath = currentPath,
                                                 files = state.files,
                                                 selectedPaths = state.selectedFilePaths,
                                                 viewMode = state.viewMode,
@@ -528,6 +594,7 @@ fun ExplorerMainScreen(
                                                 }
                                         ) {
                                             DirectoryContentView(
+                                                currentPath = state.secondPanePath,
                                                 files = state.secondPaneFiles,
                                                 selectedPaths = emptySet(),
                                                 viewMode = state.viewMode,
@@ -562,6 +629,7 @@ fun ExplorerMainScreen(
                                 } else {
                                     Box(modifier = Modifier.weight(1f)) {
                                         DirectoryContentView(
+                                            currentPath = currentPath,
                                             files = state.files,
                                             selectedPaths = state.selectedFilePaths,
                                             viewMode = state.viewMode,
@@ -673,8 +741,24 @@ fun ExplorerMainScreen(
                     // Navigation & Selection Pill
                     AnimatedVisibility(
                         visible = isNavBarVisible,
-                        enter = slideInVertically(initialOffsetY = { it * 2 }),
-                        exit = slideOutVertically(targetOffsetY = { it * 2 })
+                        enter = slideInVertically(
+                            animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow),
+                            initialOffsetY = { it * 2 }
+                        ) + scaleIn(
+                            initialScale = 0.85f,
+                            animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow)
+                        ) + fadeIn(
+                            animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                        ),
+                        exit = slideOutVertically(
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+                            targetOffsetY = { it * 2 }
+                        ) + scaleOut(
+                            targetScale = 0.85f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                        ) + fadeOut(
+                            animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                        )
                     ) {
                         Column(
                             horizontalAlignment = Alignment.End,
@@ -683,8 +767,17 @@ fun ExplorerMainScreen(
                             // Selection Action Pill
                             AnimatedVisibility(
                                 visible = state.selectedFilePaths.isNotEmpty(),
-                                enter = scaleIn() + fadeIn(),
-                                exit = scaleOut() + fadeOut()
+                                enter = scaleIn(
+                                    initialScale = 0.80f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium)
+                                ) + slideInVertically(
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+                                    initialOffsetY = { it / 2 }
+                                ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium)),
+                                exit = scaleOut(
+                                    targetScale = 0.80f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
                             ) {
                                 Surface(
                                     shape = CircleShape,
@@ -721,8 +814,24 @@ fun ExplorerMainScreen(
                             // Speed Dial Options
                             AnimatedVisibility(
                                 visible = showAddMenu && state.currentScreen == NavigationScreen.EXPLORER,
-                                enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn() + scaleIn(initialScale = 0.85f),
-                                exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut() + scaleOut(targetScale = 0.85f)
+                                enter = expandVertically(
+                                    expandFrom = Alignment.Bottom,
+                                    animationSpec = spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessMediumLow)
+                                ) + fadeIn(
+                                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                                ) + scaleIn(
+                                    initialScale = 0.78f,
+                                    animationSpec = spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessMediumLow)
+                                ),
+                                exit = shrinkVertically(
+                                    shrinkTowards = Alignment.Bottom,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                ) + fadeOut(
+                                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                                ) + scaleOut(
+                                    targetScale = 0.78f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                )
                             ) {
                                 Column(
                                     horizontalAlignment = Alignment.End,
@@ -875,17 +984,36 @@ private fun SpeedDialItem(label: String, icon: ImageVector, color: Color, onClic
 
 @Composable
 private fun NavIconButton(icon: ImageVector, contentDescription: String, isSelected: Boolean, onClick: () -> Unit) {
+    val iconScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.14f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        label = "navIconScale"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "navContainerColor"
+    )
+    val iconTint by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "navIconTint"
+    )
     IconButton(
         onClick = onClick,
         modifier = Modifier
             .size(40.dp)
+            .graphicsLayer {
+                scaleX = iconScale
+                scaleY = iconScale
+            }
             .clip(CircleShape)
-            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+            .background(containerColor)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = iconTint,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -900,14 +1028,28 @@ private fun VerticalDivider() {
 private fun AddButton(isOpen: Boolean, onClick: () -> Unit) {
     val rotation by animateFloatAsState(
         targetValue = if (isOpen) 135f else 0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "plusRotate"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (isOpen) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        label = "plusScale"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (isOpen) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primary,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "plusContainerColor"
     )
     Box(
         modifier = Modifier
             .size(40.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(CircleShape)
-            .background(if (isOpen) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primary)
+            .background(containerColor)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -1003,6 +1145,7 @@ private fun SortDialog(currentMode: SortMode, onSort: (SortMode) -> Unit, onDism
 
 @Composable
 private fun DirectoryContentView(
+    currentPath: String = "",
     files: List<FileItem>,
     selectedPaths: Set<String>,
     viewMode: ViewMode,
@@ -1013,48 +1156,77 @@ private fun DirectoryContentView(
     onRename: (FileItem) -> Unit
 ) {
     val context = LocalContext.current
-    if (files.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(imageVector = Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Directory is empty", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        return
-    }
-
-    when (viewMode) {
-        ViewMode.DETAILED_LIST, ViewMode.COMPACT_LIST -> {
-            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(files, key = { it.path }) { item ->
-                    FileListItem(
-                        file = item,
-                        isSelected = selectedPaths.contains(item.path),
-                        onItemClick = { if (selectedPaths.isNotEmpty()) viewModel.toggleFileSelection(item.path) else if (item.isDirectory) viewModel.navigateTo(item.path) else if (openWithPromptOnTap) onOpenWithFile(item) else handleFileOpen(context, item, viewModel, onRequireInstallPermission) },
-                        onItemLongClick = { viewModel.toggleFileSelection(item.path) },
-                        onInspectDetails = { viewModel.inspectFileDetails(item) },
-                        onRename = { onRename(item) },
-                        onDelete = { viewModel.deleteItemToTrash(item) },
-                        onDeletePermanently = { viewModel.deletePermanently(item) },
-                        onZip = { viewModel.toggleFileSelection(item.path) },
-                        viewModel = viewModel
-                    )
+    AnimatedContent(
+        targetState = currentPath,
+        transitionSpec = {
+            val isDeeper = targetState.length >= initialState.length
+            val slideOffset = { fullWidth: Int -> (fullWidth * 0.12f).toInt() * if (isDeeper) 1 else -1 }
+            val spatialFloatSpring = spring<Float>(
+                dampingRatio = 0.74f,
+                stiffness = Spring.StiffnessMediumLow
+            )
+            val spatialOffsetSpring = spring<IntOffset>(
+                dampingRatio = 0.74f,
+                stiffness = Spring.StiffnessMediumLow
+            )
+            val effectsSpring = spring<Float>(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+            (slideInHorizontally(animationSpec = spatialOffsetSpring, initialOffsetX = slideOffset) +
+                scaleIn(initialScale = if (isDeeper) 0.92f else 1.05f, animationSpec = spatialFloatSpring) +
+                fadeIn(animationSpec = effectsSpring))
+                .togetherWith(
+                    slideOutHorizontally(animationSpec = spatialOffsetSpring, targetOffsetX = { -slideOffset(it) }) +
+                        scaleOut(targetScale = if (isDeeper) 1.04f else 0.92f, animationSpec = spatialFloatSpring) +
+                        fadeOut(animationSpec = effectsSpring)
+                )
+        },
+        label = "directoryPathTransition"
+    ) { _ ->
+        if (files.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(imageVector = Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Directory is empty", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            return@AnimatedContent
         }
 
-        ViewMode.GRID_2, ViewMode.GRID_3 -> {
-            val cols = if (viewMode == ViewMode.GRID_2) 2 else 3
-            LazyVerticalGrid(columns = GridCells.Fixed(cols), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(files, key = { it.path }) { item ->
-                    FileGridItem(
-                        file = item,
-                        isSelected = selectedPaths.contains(item.path),
-                        onItemClick = { if (selectedPaths.isNotEmpty()) viewModel.toggleFileSelection(item.path) else if (item.isDirectory) viewModel.navigateTo(item.path) else if (openWithPromptOnTap) onOpenWithFile(item) else handleFileOpen(context, item, viewModel, onRequireInstallPermission) },
-                        onItemLongClick = { viewModel.toggleFileSelection(item.path) },
-                        viewModel = viewModel
-                    )
+        when (viewMode) {
+            ViewMode.DETAILED_LIST, ViewMode.COMPACT_LIST -> {
+                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(files, key = { it.path }) { item ->
+                        FileListItem(
+                            file = item,
+                            isSelected = selectedPaths.contains(item.path),
+                            onItemClick = { if (selectedPaths.isNotEmpty()) viewModel.toggleFileSelection(item.path) else if (item.isDirectory) viewModel.navigateTo(item.path) else if (openWithPromptOnTap) onOpenWithFile(item) else handleFileOpen(context, item, viewModel, onRequireInstallPermission) },
+                            onItemLongClick = { viewModel.toggleFileSelection(item.path) },
+                            onInspectDetails = { viewModel.inspectFileDetails(item) },
+                            onRename = { onRename(item) },
+                            onDelete = { viewModel.deleteItemToTrash(item) },
+                            onDeletePermanently = { viewModel.deletePermanently(item) },
+                            onZip = { viewModel.toggleFileSelection(item.path) },
+                            viewModel = viewModel
+                        )
+                    }
+                }
+            }
+
+            ViewMode.GRID_2, ViewMode.GRID_3 -> {
+                val cols = if (viewMode == ViewMode.GRID_2) 2 else 3
+                LazyVerticalGrid(columns = GridCells.Fixed(cols), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(files, key = { it.path }) { item ->
+                        FileGridItem(
+                            file = item,
+                            isSelected = selectedPaths.contains(item.path),
+                            onItemClick = { if (selectedPaths.isNotEmpty()) viewModel.toggleFileSelection(item.path) else if (item.isDirectory) viewModel.navigateTo(item.path) else if (openWithPromptOnTap) onOpenWithFile(item) else handleFileOpen(context, item, viewModel, onRequireInstallPermission) },
+                            onItemLongClick = { viewModel.toggleFileSelection(item.path) },
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
         }
