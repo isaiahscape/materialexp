@@ -1,5 +1,10 @@
 package com.overseer.explorer.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -10,20 +15,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Splitscreen
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,20 +31,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.overseer.explorer.ui.viewmodel.SortMode
-import com.overseer.explorer.ui.viewmodel.ViewMode
-import java.io.File
 
 @Composable
 fun BreadcrumbBar(
@@ -107,7 +103,7 @@ fun BreadcrumbBar(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp
+        tonalElevation = 1.dp
     ) {
         Row(
             modifier = Modifier
@@ -115,79 +111,136 @@ fun BreadcrumbBar(
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
+            Surface(
                 onClick = onNavigateBack,
-                modifier = Modifier.testTag("btn_navigate_back")
+                modifier = Modifier
+                    .size(36.dp)
+                    .testTag("btn_navigate_back"),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Navigate Back",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Navigate Back",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             // Path Breadcrumbs
             Row(
                 modifier = Modifier
                     .weight(1f)
+                    .padding(horizontal = 6.dp)
                     .horizontalScroll(rememberScrollState()),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start
             ) {
                 segments.forEachIndexed { index, (name, path) ->
                     val isLast = index == segments.lastIndex
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(
-                                if (isLast) MaterialTheme.colorScheme.primaryContainer
-                                else Color.Transparent
-                            )
-                            .clickable { onNavigateToSegment(path) }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    Surface(
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp)),
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isLast) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        border = if (isLast) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)) else null
                     ) {
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = if (isLast) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 13.sp
-                            ),
-                            color = if (isLast) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                        )
+                        Box(
+                            modifier = Modifier
+                                .clickable { onNavigateToSegment(path) }
+                                .padding(horizontal = 9.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = if (isLast) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 13.sp
+                                ),
+                                color = if (isLast) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
 
                     if (!isLast) {
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(16.dp).padding(horizontal = 2.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .size(16.dp)
+                                .padding(horizontal = 1.dp)
                         )
                     }
                 }
             }
 
-            // Quick Actions
-            IconButton(onClick = onOpenSearch, modifier = Modifier.testTag("btn_search")) {
-                Icon(Icons.Default.Search, contentDescription = "Search Files", tint = MaterialTheme.colorScheme.onSurface)
-            }
+            // Quick Actions with Expressive Micro-interactions
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onOpenSearch,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .testTag("btn_search")
+                ) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search Files",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
 
-            IconButton(onClick = onToggleBookmark, modifier = Modifier.testTag("btn_bookmark")) {
-                Icon(
-                    imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                    contentDescription = "Bookmark",
-                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                val bookmarkScale by animateFloatAsState(
+                    targetValue = if (isBookmarked) 1.15f else 1.0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "bookmarkScale"
                 )
-            }
+                IconButton(
+                    onClick = onToggleBookmark,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .graphicsLayer {
+                            scaleX = bookmarkScale
+                            scaleY = bookmarkScale
+                        }
+                        .testTag("btn_bookmark")
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        contentDescription = "Bookmark",
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
 
-            IconButton(onClick = onToggleDualPane, modifier = Modifier.testTag("btn_dual_pane")) {
-                Icon(
-                    imageVector = Icons.Default.Splitscreen,
-                    contentDescription = "Toggle Dual Pane",
-                    tint = if (isDualPane) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                val dualPaneBg by animateColorAsState(
+                    targetValue = if (isDualPane) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    label = "dualPaneBg"
                 )
+                IconButton(
+                    onClick = onToggleDualPane,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(dualPaneBg)
+                        .testTag("btn_dual_pane")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Splitscreen,
+                        contentDescription = "Toggle Dual Pane",
+                        tint = if (isDualPane) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
-
         }
     }
 }

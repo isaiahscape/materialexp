@@ -249,133 +249,217 @@ fun ExplorerMainScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                modifier = Modifier.width(320.dp),
+                drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(280.dp)
-                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    // Expressive Branded Header Card
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(MaterialTheme.colorScheme.primary),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = "Overseer",
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                    Text(
+                                        text = "Material Expressive Explorer",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                                    )
+                                }
+                            }
+
+                            state.storageStats?.let { stats ->
+                                Spacer(modifier = Modifier.height(14.dp))
+                                val usedGb = stats.usedBytes.toDouble() / (1024 * 1024 * 1024)
+                                val totalGb = stats.totalBytes.toDouble() / (1024 * 1024 * 1024)
+                                val ratio = (stats.usedBytes.toFloat() / stats.totalBytes.toFloat().coerceAtLeast(1f)).coerceIn(0f, 1f)
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Internal Storage",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "${"%.1f".format(usedGb)} / ${"%.0f".format(totalGb)} GB",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                androidx.compose.material3.LinearProgressIndicator(
+                                    progress = { ratio },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
+                                )
+                            }
+                        }
+                    }
+
+                    // Section: WORKSPACE
                     Text(
-                        text = "Overseer",
-                        style = MaterialTheme.typography.titleLarge.copy(
+                        text = "WORKSPACE",
+                        style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            letterSpacing = 1.sp
                         ),
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp)
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 2.dp)
                     )
 
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                        label = { Text("Home") },
+                    ExpressiveDrawerItem(
+                        icon = Icons.Default.Home,
+                        label = "Home",
                         selected = state.currentScreen == NavigationScreen.HOME,
-                        onClick = {
-                            viewModel.switchScreen(NavigationScreen.HOME)
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.testTag("drawer_item_home")
-                    )
+                        testTag = "drawer_item_home"
+                    ) {
+                        viewModel.switchScreen(NavigationScreen.HOME)
+                        scope.launch { drawerState.close() }
+                    }
 
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
-                        label = { Text("Explorer") },
+                    ExpressiveDrawerItem(
+                        icon = Icons.Default.Folder,
+                        label = "Explorer",
                         selected = state.currentScreen == NavigationScreen.EXPLORER && activeTab?.currentPath != "/",
-                        onClick = {
-                            viewModel.switchScreen(NavigationScreen.EXPLORER)
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.testTag("drawer_item_explorer")
-                    )
+                        testTag = "drawer_item_explorer"
+                    ) {
+                        viewModel.switchScreen(NavigationScreen.EXPLORER)
+                        scope.launch { drawerState.close() }
+                    }
 
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
-                        label = { Text("Root System (/)") },
+                    ExpressiveDrawerItem(
+                        icon = Icons.Default.Folder,
+                        label = "Root System (/)",
                         selected = state.currentScreen == NavigationScreen.EXPLORER && activeTab?.currentPath == "/",
-                        onClick = {
-                            viewModel.switchScreen(NavigationScreen.EXPLORER)
-                            viewModel.navigateToRoot()
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.testTag("drawer_item_root")
-                    )
+                        badgeText = "ROOT",
+                        testTag = "drawer_item_root"
+                    ) {
+                        viewModel.switchScreen(NavigationScreen.EXPLORER)
+                        viewModel.navigateToRoot()
+                        scope.launch { drawerState.close() }
+                    }
 
                     val externalDrives = state.storageDrives.filter { it.iconType == "SD_CARD" || it.iconType == "USB_OTG" }
                     if (externalDrives.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "EXTERNAL STORAGE",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                letterSpacing = 1.sp
                             ),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 2.dp)
                         )
                         externalDrives.forEach { drive ->
                             val isDriveActive = state.currentScreen == NavigationScreen.EXPLORER && activeTab?.currentPath == drive.path
-                            NavigationDrawerItem(
-                                icon = {
-                                    Icon(
-                                        imageVector = if (drive.iconType == "USB_OTG") Icons.Default.Usb else Icons.Default.SdCard,
-                                        contentDescription = null
-                                    )
-                                },
-                                label = { Text(drive.label) },
+                            ExpressiveDrawerItem(
+                                icon = if (drive.iconType == "USB_OTG") Icons.Default.Usb else Icons.Default.SdCard,
+                                label = drive.label,
                                 selected = isDriveActive,
-                                onClick = {
-                                    viewModel.switchScreen(NavigationScreen.EXPLORER)
-                                    viewModel.navigateTo(drive.path)
-                                    scope.launch { drawerState.close() }
-                                },
-                                modifier = Modifier.testTag("drawer_item_${drive.iconType.lowercase()}")
-                            )
+                                badgeText = if (drive.iconType == "USB_OTG") "USB" else "SD",
+                                testTag = "drawer_item_${drive.iconType.lowercase()}"
+                            ) {
+                                viewModel.switchScreen(NavigationScreen.EXPLORER)
+                                viewModel.navigateTo(drive.path)
+                                scope.launch { drawerState.close() }
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "TOOLS & UTILITIES",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 2.dp)
+                    )
 
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.PieChart, contentDescription = null) },
-                        label = { Text("Storage Analyzer") },
+                    ExpressiveDrawerItem(
+                        icon = Icons.Default.PieChart,
+                        label = "Storage Analyzer",
                         selected = state.currentScreen == NavigationScreen.STORAGE_ANALYZER,
-                        onClick = {
-                            viewModel.switchScreen(NavigationScreen.STORAGE_ANALYZER)
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.testTag("drawer_item_analyzer")
-                    )
+                        testTag = "drawer_item_analyzer"
+                    ) {
+                        viewModel.switchScreen(NavigationScreen.STORAGE_ANALYZER)
+                        scope.launch { drawerState.close() }
+                    }
 
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Bookmark, contentDescription = null) },
-                        label = { Text("Pinned Bookmarks") },
+                    ExpressiveDrawerItem(
+                        icon = Icons.Default.Bookmark,
+                        label = "Pinned Bookmarks",
                         selected = state.currentScreen == NavigationScreen.BOOKMARKS,
-                        onClick = {
-                            viewModel.switchScreen(NavigationScreen.BOOKMARKS)
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.testTag("drawer_item_bookmarks")
-                    )
+                        badgeText = if (state.bookmarks.isNotEmpty()) "${state.bookmarks.size}" else null,
+                        testTag = "drawer_item_bookmarks"
+                    ) {
+                        viewModel.switchScreen(NavigationScreen.BOOKMARKS)
+                        scope.launch { drawerState.close() }
+                    }
 
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Recycling, contentDescription = null) },
-                        label = { Text("Recycle Bin") },
+                    ExpressiveDrawerItem(
+                        icon = Icons.Default.Recycling,
+                        label = "Recycle Bin",
                         selected = state.currentScreen == NavigationScreen.TRASH_BIN,
-                        onClick = {
-                            viewModel.switchScreen(NavigationScreen.TRASH_BIN)
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.testTag("drawer_item_trash")
-                    )
+                        badgeText = if (state.trashItems.isNotEmpty()) "${state.trashItems.size}" else null,
+                        testTag = "drawer_item_trash"
+                    ) {
+                        viewModel.switchScreen(NavigationScreen.TRASH_BIN)
+                        scope.launch { drawerState.close() }
+                    }
 
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text("Settings") },
+                    ExpressiveDrawerItem(
+                        icon = Icons.Default.Settings,
+                        label = "Settings",
                         selected = state.currentScreen == NavigationScreen.SETTINGS,
-                        onClick = {
-                            viewModel.switchScreen(NavigationScreen.SETTINGS)
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.testTag("drawer_item_settings")
-                    )
+                        testTag = "drawer_item_settings"
+                    ) {
+                        viewModel.switchScreen(NavigationScreen.SETTINGS)
+                        scope.launch { drawerState.close() }
+                    }
                 }
             }
         }
@@ -568,12 +652,34 @@ fun ExplorerMainScreen(
                                                     modifier = Modifier
                                                         .fillMaxSize()
                                                         .clickable { viewModel.moveFileToPane(draggedFile!!, com.overseer.explorer.ui.viewmodel.PaneType.PRIMARY) },
-                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                                                    shape = RoundedCornerShape(20.dp),
+                                                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                                                 ) {
                                                     Box(contentAlignment = Alignment.Center) {
-                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                            Icon(Icons.Default.ContentCopy, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
-                                                            Text("Drop to Move", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                                        Column(
+                                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(64.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(MaterialTheme.colorScheme.primary),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.ContentCopy,
+                                                                    contentDescription = null,
+                                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                                    modifier = Modifier.size(32.dp)
+                                                                )
+                                                            }
+                                                            Text(
+                                                                text = "Drop to Move Here",
+                                                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                            )
                                                         }
                                                     }
                                                 }
@@ -614,12 +720,34 @@ fun ExplorerMainScreen(
                                                     modifier = Modifier
                                                         .fillMaxSize()
                                                         .clickable { viewModel.moveFileToPane(draggedFile!!, com.overseer.explorer.ui.viewmodel.PaneType.SECONDARY) },
-                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                                                    shape = RoundedCornerShape(20.dp),
+                                                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                                                 ) {
                                                     Box(contentAlignment = Alignment.Center) {
-                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                            Icon(Icons.Default.ContentCopy, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
-                                                            Text("Drop to Move", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                                        Column(
+                                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(64.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(MaterialTheme.colorScheme.primary),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.ContentCopy,
+                                                                    contentDescription = null,
+                                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                                    modifier = Modifier.size(32.dp)
+                                                                )
+                                                            }
+                                                            Text(
+                                                                text = "Drop to Move Here",
+                                                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                            )
                                                         }
                                                     }
                                                 }
@@ -963,6 +1091,105 @@ fun ExplorerMainScreen(
 // --- Composable Sub-components ---
 
 @Composable
+private fun ExpressiveDrawerItem(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    badgeText: String? = null,
+    testTag: String,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.02f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "drawerItemScale"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        else Color.Transparent,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "drawerContainerColor"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurface,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "drawerContentColor"
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(16.dp),
+        color = containerColor,
+        border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)) else null
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (selected) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                ),
+                color = contentColor,
+                modifier = Modifier.weight(1f)
+            )
+
+            if (badgeText != null) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (selected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        ),
+                        color = if (selected) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SpeedDialItem(label: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
@@ -1186,10 +1413,45 @@ private fun DirectoryContentView(
     ) { _ ->
         if (files.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(imageVector = Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Directory is empty", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(30.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Directory is empty",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "No files or folders found here",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             return@AnimatedContent
