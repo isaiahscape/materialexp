@@ -50,19 +50,19 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Accept Android SDK Licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          SDKMANAGER=$(which sdkmanager || find "$ANDROID_HOME/cmdline-tools" -name sdkmanager | head -n 1)
+          yes | "$SDKMANAGER" --licenses || true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Prepare Gradle Wrapper
+      - name: Prepare Build Environment
         run: |
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
+          [ -f .env ] || cp .env.example .env
 
       - name: Prepare Keystore for Signing
         env:
@@ -74,7 +74,7 @@ jobs:
           if [ ! -f "debug.keystore" ]; then
             keytool -genkeypair -v \
               -keystore debug.keystore \
-              -storepass tsn \
+              -storepass tsnbuilds \
               -alias tsn-debug \
               -keypass tsn \
               -keyalg RSA \
