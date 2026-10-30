@@ -76,7 +76,7 @@ jobs:
               -keystore debug.keystore \
               -storepass tsnbuilds \
               -alias tsn-debug \
-              -keypass tsn \
+              -keypass tsnbuilds \
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
